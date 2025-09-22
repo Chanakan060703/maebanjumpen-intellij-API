@@ -44,4 +44,27 @@ public class PersonController {
         personService.deletePerson(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}/update-picture-url")
+    public ResponseEntity<Person> updatePersonPictureUrl(
+            @PathVariable int id,
+            @RequestParam String newBaseUrl) {
+        Person updatedPerson = personService.updatePersonPictureUrl(id, newBaseUrl);
+        if (updatedPerson != null) {
+            return ResponseEntity.ok(updatedPerson);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/update-all-picture-urls")
+    public ResponseEntity<String> updateAllPersonPictureUrls(
+            @RequestParam String newBaseUrl) {
+        try {
+            personService.updateAllPersonPictureUrls(newBaseUrl);
+            return ResponseEntity.ok("All person picture URLs updated successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to update URLs: " + e.getMessage());
+        }
+    }
 }

@@ -26,6 +26,26 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    public Person updatePersonPictureUrl(int id, String newBaseUrl) {
+        return personRepository.findById(id).map(person -> {
+            String oldPictureUrl = person.getPictureUrl();
+            if (oldPictureUrl != null && !oldPictureUrl.isEmpty()) {
+                // หาตำแหน่งสุดท้ายของ '/' ที่บ่งบอกถึงส่วน Base URL
+                int lastSlashIndex = oldPictureUrl.indexOf("/maeban/files");
+                if (lastSlashIndex != -1) {
+                    // ดึงส่วนที่เหลือของ URL ตั้งแต่ /maeban/files เป็นต้นไป
+                    String pathAndFile = oldPictureUrl.substring(lastSlashIndex);
+                    // สร้าง URL ใหม่ด้วย Base URL ใหม่
+                    String newPictureUrl = newBaseUrl + pathAndFile;
+                    person.setPictureUrl(newPictureUrl);
+                    return personRepository.save(person);
+                }
+            }
+            return person; // คืนค่า person เดิมหากไม่มี URL หรือ URL ไม่ตรงตามรูปแบบที่คาดหวัง
+        }).orElse(null);
+    }
+
+    @Override
     public Person getPersonById(int id) {
         // เมธอดนี้ควรอยู่ใน Transactional context (โดยปกติ JpaRepository จะจัดการให้)
         // และ FetchType.EAGER ควรทำให้ Login ถูกโหลดมาด้วย
@@ -113,5 +133,24 @@ public class PersonServiceImpl implements PersonService {
         }
 
         return personRepository.save(existingPerson);
+    }
+
+    @Override
+    @Transactional
+    public void updateAllPersonPictureUrls(String newBaseUrl) {
+        List<Person> allPersons = personRepository.findAll();
+        for (Person person : allPersons) {
+            String oldPictureUrl = person.getPictureUrl();
+            if (oldPictureUrl != null && !oldPictureUrl.isEmpty()) {
+                int lastSlashIndex = oldPictureUrl.indexOf("/maeban/files");
+                if (lastSlashIndex != -1) {
+                    String pathAndFile = oldPictureUrl.substring(lastSlashIndex);
+                    String newPictureUrl = newBaseUrl + pathAndFile;
+                    person.setPictureUrl(newPictureUrl);
+                }
+            }
+        }
+        // SaveAll จะบันทึกการเปลี่ยนแปลงทั้งหมดใน Transaction เดียว
+        personRepository.saveAll(allPersons);
     }
 }

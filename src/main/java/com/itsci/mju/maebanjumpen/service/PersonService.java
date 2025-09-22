@@ -10,6 +10,8 @@ public interface PersonService {
     Person savePerson(Person person);
     void deletePerson(int id);
     Person getPersonByUsername(String username);
-
     Person updatePerson(int id, Person person);
+    Person updatePersonPictureUrl(int id, String newBaseUrl);
+    // เพิ่มเมธอดนี้สำหรับอัปเดต URL ของทุก Person
+    void updateAllPersonPictureUrls(String newBaseUrl);
 }
