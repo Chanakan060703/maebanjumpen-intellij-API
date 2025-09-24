@@ -1,74 +1,82 @@
-# maebanAPI
+# 🖥 Maebanjumpen API – Backend for Housekeeper Hiring Platform
 
-## Description
-maebanAPI is a simple to-do list application built as a full-stack project. It allows users to manage their tasks efficiently with features to create, read, update, and delete tasks. The application is designed to be responsive and user-friendly.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Spring Boot](https://img.shields.io/badge/Backend-SpringBoot-darkgreen?logo=springboot)](https://spring.io/projects/spring-boot)
+[![MySQL](https://img.shields.io/badge/Database-MySQL-blue?logo=mysql)](https://www.mysql.com/)
 
-## Key Features
-- Add and delete tasks.
-- Mark tasks as completed.
-- Filter tasks by status (all, active, completed).
-- Responsive design for seamless use across devices.
+> This repository contains the **backend API** for the Maebanjumpen platform. It is a robust **Spring Boot** application that handles user authentication, service booking requests, and database management for the mobile app.
 
-## Technology Stack
-- **Front-end:** React, JavaScript, CSS
-- **Back-end:** Node.js, Express.js
-- **Database:** MongoDB
+---
 
-## How to Run (Manual)
+## ✨ Key Features
 
-### Prerequisites
-Ensure you have the following installed on your system:
-- [Node.js](https://nodejs.org/)
-- [npm](https://www.npmjs.com/)
-- A running [MongoDB](https://www.mongodb.com/) instance
+* **Role-based Authentication:** Manages user roles such as customer, housekeeper, and admin.
+* **RESTful Endpoints:** Provides secure and well-documented API endpoints for all platform functionalities.
+* **Data Persistence:** Interacts with a **MySQL** database to store and retrieve all user and booking information.
+* **Efficient Service Management:** Handles the core business logic for searching, booking, and tracking housekeeper services.
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone [your-repo-url]
-   ```
-2. Navigate to the project folder:
-   ```bash
-   cd [project-folder]
-   ```
-3. Install the dependencies:
-   ```bash
-   npm install
-   ```
+---
 
-### Running the Server
-1. Start the server:
-   ```bash
-   npm start
-   ```
+## 🛠 Technology Stack
 
-### Running the Client
-1. Navigate to the client folder:
-   ```bash
-   cd client
-   ```
-2. Install the client dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the client:
-   ```bash
-   npm start
-   ```
+| **Backend** | **Database** | **Tools** |
+| :---------- | :----------- | :-------- |
+| ☕ Spring Boot (Java) | 🗄 MySQL | 🛠 Postman · IntelliJ IDEA · Git |
 
-## How to Use
-1. Open the application in your browser (usually available at `http://localhost:3000` for the client and `http://localhost:5000` for the server).
-2. Use the interface to:
-   - Add new tasks by typing in the input field and clicking "Add Task."
-   - Mark tasks as completed by clicking the checkbox next to them.
-   - Delete tasks by clicking the delete button.
-   - Filter tasks by selecting "All," "Active," or "Completed" from the filter options.
+---
 
-## Contributing
-Contributions are welcome! Please fork the repository and submit a pull request with your changes.
+## 🚀 Getting Started
 
-## License
+### ✅ Prerequisites
+
+* **Java JDK 17+**
+* **MySQL Server**
+* **Maven** (usually included with Spring Boot projects via `./mvnw`)
+
+---
+
+### 🔧 Installation and Running
+
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/Chanakan060703/maebanjumpen-intellij-API](https://github.com/Chanakan060703/maebanjumpen-intellij-API)
+    cd maebanjumpen-intellij-API
+    ```
+2.  **Configure the database:** Open `src/main/resources/application.properties` and update the MySQL connection settings with your credentials.
+    ```properties
+    spring.datasource.url=jdbc:mysql://localhost:3306/your_database_name
+    spring.datasource.username=your_username
+    spring.datasource.password=your_password
+    ```
+3.  **Run the application:**
+    ```bash
+    ./mvnw spring-boot:run
+    ```
+
+---
+
+## 🔗 Related Repositories
+
+This backend is the API for the **Maebanjumpen mobile application**.
+
+[![📱 Mobile App Code](https://img.shields.io/badge/📱_Mobile_App_Code-0A66C2?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Chanakan060703/maebanjumpen)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please fork the repository, create a feature branch, and submit a pull request with your changes.
+
+---
+
+## 📜 License
+
 This project is licensed under the [MIT License](LICENSE).
 
-## Contact
-For any questions or feedback, please contact the project maintainer at [your-email@example.com].
+---
+
+## 📬 Contact
+
+* **Name:** Chanakan Kongyen
+* **Email:** Chonakankongyen@gmail.com
+* **GitHub:** [github.com/Chanakan060703](https://github.com/Chanakan060703)
