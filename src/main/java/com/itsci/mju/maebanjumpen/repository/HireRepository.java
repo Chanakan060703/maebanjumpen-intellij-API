@@ -30,6 +30,7 @@ public interface HireRepository extends JpaRepository<Hire, Integer> {
             "LEFT JOIN FETCH hks.skillType " +
             "LEFT JOIN FETCH hk.transactions " +
             "LEFT JOIN FETCH h.review r " +
+            "LEFT JOIN FETCH h.progressionImageUrls " + // <-- เพิ่มบรรทัดนี้
             "WHERE hr.id = :hirerId")
     List<Hire> findByHirerIdWithDetails(@Param("hirerId") Integer hirerId);
 

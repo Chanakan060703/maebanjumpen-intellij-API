@@ -57,63 +57,60 @@ public class ReviewController {
     // แก้ไข: เพิ่ม produces = "application/json;charset=UTF-8" เพื่อรองรับภาษาไทย
     @PostMapping(produces = "application/json;charset=UTF-8")
     public ResponseEntity<Review> createReview(@RequestBody Review review) {
-        // 1. ตรวจสอบว่า Review ที่เข้ามามี Hire ID หรือไม่
         if (review.getHire() == null || review.getHire().getHireId() == null) {
             System.err.println("Error: Review object must contain a valid Hire ID.");
-            return ResponseEntity.badRequest().body(null); // HTTP 400 Bad Request
+            return ResponseEntity.badRequest().body(null);
         }
 
         Integer hireId = review.getHire().getHireId();
-
-        // 2. ดึง Hire object ที่สมบูรณ์จากฐานข้อมูล
         Optional<Hire> existingHireOptional = hireRepository.findById(hireId);
+
         if (existingHireOptional.isEmpty()) {
             System.err.println("Error: Hire with ID " + hireId + " not found.");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null); // HTTP 404 Not Found
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
         Hire existingHire = existingHireOptional.get();
 
-        // 3. ตรวจสอบว่า Hire นี้มี Review อยู่แล้วหรือไม่
-        // เนื่องจากความสัมพันธ์เป็น @OneToOne และ hire_id เป็น unique constraint
-        // เราต้องแน่ใจว่าไม่มี Review สำหรับ Hire นี้อยู่แล้ว
         if (existingHire.getReview() != null) {
             System.err.println("Error: Hire with ID " + hireId + " already has a review (Review ID: " + existingHire.getReview().getReviewId() + ").");
-            // ถ้ามีรีวิวอยู่แล้ว ส่ง HTTP 409 Conflict กลับไป
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(existingHire.getReview()); // อาจจะส่ง review เดิมกลับไป หรือ null ก็ได้
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(existingHire.getReview());
         }
 
-        // 4. ตั้งค่า Hire object ที่สมบูรณ์ให้กับ Review
         review.setHire(existingHire);
-        // กำหนดวันที่รีวิวอัตโนมัติหากยังไม่ได้ตั้งค่า
         if (review.getReviewDate() == null) {
             review.setReviewDate(LocalDateTime.now());
         }
 
-        // 5. บันทึก Review ใหม่
         Review savedReview = reviewRepository.save(review);
         System.out.println("Review created successfully for Hire ID: " + savedReview.getHire().getHireId());
 
-        // 6. อัปเดตเรตติ้งของ Housekeeper ที่เกี่ยวข้อง
+        // *** นี่คือส่วนที่แก้ไขและเพิ่มเข้ามา ***
+        // 1. อัปเดตสถานะของงานจ้างเป็น "Reviewed"
+        existingHire.setJobStatus("Reviewed");
+
+        // 2. บันทึกการเปลี่ยนแปลงสถานะลงในฐานข้อมูล
+        hireRepository.save(existingHire);
+        System.out.println("Updated Hire status to 'Reviewed' for ID: " + existingHire.getHireId());
+
+        // 3. คำนวณและอัปเดตคะแนนเฉลี่ยของแม่บ้าน
         if (savedReview.getHire() != null && savedReview.getHire().getHousekeeper() != null) {
             Integer housekeeperId = savedReview.getHire().getHousekeeper().getId();
             housekeeperService.calculateAndSetAverageRating(housekeeperId);
             System.out.println("Triggered average rating update for Housekeeper ID: " + housekeeperId);
         }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedReview); // HTTP 201 Created
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedReview);
     }
 
     @PutMapping(value = "/{id}", produces = "application/json;charset=UTF-8")
     public ResponseEntity<Review> updateReview(@PathVariable int id, @RequestBody Review review) {
-        // ... โค้ดเดิม
         Review updatedReview = reviewService.updateReview(id, review);
         if (updatedReview == null) {
             return ResponseEntity.notFound().build();
         }
 
         if (updatedReview.getHire() != null && updatedReview.getHire().getHousekeeper() != null && updatedReview.getHire().getHousekeeper().getId() != null) {
-            housekeeperService.calculateAndSetAverageRating(updatedReview.getHire().getHousekeeper().getId()); // <<< ตรงนี้!
+            housekeeperService.calculateAndSetAverageRating(updatedReview.getHire().getHousekeeper().getId());
             System.out.println("Triggered average rating update after review update for Housekeeper ID: " + updatedReview.getHire().getHousekeeper().getId());
         }
         return ResponseEntity.ok(updatedReview);
@@ -125,7 +122,7 @@ public class ReviewController {
         if (reviewToDelete != null && reviewToDelete.getHire() != null && reviewToDelete.getHire().getHousekeeper() != null) {
             int housekeeperId = reviewToDelete.getHire().getHousekeeper().getId();
             reviewService.deleteReview(id);
-            housekeeperService.calculateAndSetAverageRating(housekeeperId); // <<< ตรงนี้!
+            housekeeperService.calculateAndSetAverageRating(housekeeperId);
             System.out.println("Triggered average rating update after review deletion for Housekeeper ID: " + housekeeperId);
         } else {
             reviewService.deleteReview(id);
@@ -134,11 +131,10 @@ public class ReviewController {
         return ResponseEntity.noContent().build();
     }
 
-    // *** เมธอดใหม่สำหรับดึงรีวิวตาม Hire ID ***
     @GetMapping(value = "/hire/{hireId}", produces = "application/json;charset=UTF-8")
     public ResponseEntity<List<Review>> getReviewsByHireId(@PathVariable int hireId) {
         List<Review> reviews = reviewService.getReviewsByHireId(hireId);
-        if (reviews.isEmpty()) { // ตรวจสอบว่า list ว่างเปล่าหรือไม่
+        if (reviews.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(reviews);

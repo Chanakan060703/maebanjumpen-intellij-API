@@ -1,5 +1,6 @@
 package com.itsci.mju.maebanjumpen.repository;
 
+import com.itsci.mju.maebanjumpen.model.Hire;
 import com.itsci.mju.maebanjumpen.model.Report;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -24,4 +25,6 @@ public interface ReportRepository extends JpaRepository<Report, Integer> {
             "AND r.penalty IS NOT NULL " +   // ต้องมี penalty เชื่อมโยงอยู่
             "ORDER BY r.reportDate DESC")    // เรียงตามวันที่ล่าสุด
     List<Report> findReportsWithPenaltyByPersonId(@Param("personId") Integer personId);
+
+    Optional<Report> findByHire(Hire hire);
 }

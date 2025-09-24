@@ -51,4 +51,8 @@ public class Report {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "penalty_id")
     private Penalty penalty;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hire_id", unique = true, nullable = false) // 'unique = true' is key
+    private Hire hire;
 }
