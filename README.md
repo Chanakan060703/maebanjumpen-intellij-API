@@ -75,8 +75,8 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-## 📬 Contact
+## 📬 Contact  
 
-* **Name:** Chanakan Kongyen
+👤 **Chanakan Kongyen**  
 * **Email:** Chonakankongyen@gmail.com
 * **GitHub:** [github.com/Chanakan060703](https://github.com/Chanakan060703)
