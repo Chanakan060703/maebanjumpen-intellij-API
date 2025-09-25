@@ -3,6 +3,7 @@ package com.itsci.mju.maebanjumpen.controller;
 import com.itsci.mju.maebanjumpen.model.Review;
 import com.itsci.mju.maebanjumpen.model.Hire;
 import com.itsci.mju.maebanjumpen.repository.ReviewRepository;
+import com.itsci.mju.maebanjumpen.service.HireStatusUpdateService;
 import com.itsci.mju.maebanjumpen.service.ReviewService;
 import com.itsci.mju.maebanjumpen.repository.HireRepository;
 import com.itsci.mju.maebanjumpen.service.HireService; // Import HireService
@@ -35,6 +36,9 @@ public class ReviewController {
 
     @Autowired // เพิ่ม autowire สำหรับ HousekeeperService
     private HousekeeperService housekeeperService;
+
+    @Autowired // Autowire the new service
+    private HireStatusUpdateService hireStatusUpdateService;
 
 
     // แก้ไข: เพิ่ม produces = "application/json;charset=UTF-8" เพื่อรองรับภาษาไทย
@@ -84,15 +88,20 @@ public class ReviewController {
         Review savedReview = reviewRepository.save(review);
         System.out.println("Review created successfully for Hire ID: " + savedReview.getHire().getHireId());
 
-        // *** นี่คือส่วนที่แก้ไขและเพิ่มเข้ามา ***
         // 1. อัปเดตสถานะของงานจ้างเป็น "Reviewed"
         existingHire.setJobStatus("Reviewed");
-
         // 2. บันทึกการเปลี่ยนแปลงสถานะลงในฐานข้อมูล
         hireRepository.save(existingHire);
         System.out.println("Updated Hire status to 'Reviewed' for ID: " + existingHire.getHireId());
 
-        // 3. คำนวณและอัปเดตคะแนนเฉลี่ยของแม่บ้าน
+        // 3. กำหนดเวลาให้เปลี่ยนสถานะกลับไปเป็น "Completed" หลังจาก 3 วินาที
+        // IMPORTANT: ใช้ hireId จาก existingHire ไม่ใช่จาก savedReview.getHire() เพื่อความมั่นใจ
+        if (existingHire.getHireId() != null) {
+            hireStatusUpdateService.scheduleStatusRevert(existingHire.getHireId(), 3); // 3 วินาที
+        }
+
+
+        // 4. คำนวณและอัปเดตคะแนนเฉลี่ยของแม่บ้าน
         if (savedReview.getHire() != null && savedReview.getHire().getHousekeeper() != null) {
             Integer housekeeperId = savedReview.getHire().getHousekeeper().getId();
             housekeeperService.calculateAndSetAverageRating(housekeeperId);

@@ -7,6 +7,7 @@ import com.itsci.mju.maebanjumpen.serializer.HireSerializer;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.EqualsAndHashCode.Exclude;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import java.util.List;
 @Builder
 @JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class, property = "@id")
 @JsonSerialize(using = HireSerializer.class)
+@JsonIgnoreProperties(ignoreUnknown = true) // <-- เพิ่มบรรทัดนี้เพื่อละเว้น field ที่ไม่รู้จัก
 public class Hire {
 
 	@Id
@@ -45,7 +47,7 @@ public class Hire {
 	@Column(nullable = false)
 	private LocalTime startTime;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private LocalTime endTime;
 
 	@Column(nullable = false)
@@ -61,21 +63,17 @@ public class Hire {
 	@JoinColumn(name = "hirer_id")
 	@ToString.Exclude
 	@Exclude
-	//@JsonBackReference("hirer-hires")
 	private Hirer hirer;
 
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "housekeeper_id")
 	@ToString.Exclude
-
 	@Exclude
-	//@JsonBackReference("housekeeper-hires")
 	private Housekeeper housekeeper;
 
 	@OneToOne(mappedBy = "hire", fetch = FetchType.LAZY)
 	@ToString.Exclude
 	@Exclude
-	//@JsonManagedReference("hire-review")
 	private Review review;
 
 	public void setReview(Review review) {
@@ -87,5 +85,4 @@ public class Hire {
 			review.setHire(this);
 		}
 	}
-
 }

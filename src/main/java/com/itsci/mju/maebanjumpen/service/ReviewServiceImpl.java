@@ -1,4 +1,3 @@
-// src/main/java/com/itsci/mju/maebanjumpen/service/ReviewServiceImpl.java
 package com.itsci.mju.maebanjumpen.service;
 
 import com.itsci.mju.maebanjumpen.model.Review;
@@ -8,8 +7,8 @@ import com.itsci.mju.maebanjumpen.repository.HireRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ReviewServiceImpl implements ReviewService {
@@ -19,6 +18,9 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Autowired
     private HireRepository hireRepository;
+
+    @Autowired
+    private HousekeeperService housekeeperService;
 
     @Override
     @Transactional(readOnly = true)
@@ -35,15 +37,52 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional
     public Review saveReview(Review review) {
-        if (review.getHire() != null && review.getHire().getHireId() != null) {
-            // *** แก้ไขตรงนี้ให้เรียกเมธอด fetchByIdWithAllDetails ***
-            Hire managedHire = hireRepository.fetchByIdWithAllDetails(review.getHire().getHireId())
-                    .orElseThrow(() -> new RuntimeException("Hire with ID " + review.getHire().getHireId() + " not found"));
-            review.setHire(managedHire);
+        // Check if the review object contains a valid hire ID.
+        if (review.getHire() == null || review.getHire().getHireId() == null) {
+            System.err.println("Error: Review object must contain a valid Hire ID.");
+            return null;
         }
 
+        // 1. Fetch the Hire object from the database to ensure it's a managed entity.
+        Optional<Hire> existingHireOptional = hireRepository.findById(review.getHire().getHireId());
+
+        if (existingHireOptional.isEmpty()) {
+            System.err.println("Error: Hire with ID " + review.getHire().getHireId() + " not found.");
+            return null;
+        }
+
+        Hire existingHire = existingHireOptional.get();
+
+        // Check if a review for this hire already exists.
+        if (existingHire.getReview() != null) {
+            System.err.println("Error: Hire with ID " + existingHire.getHireId() + " already has a review (Review ID: " + existingHire.getReview().getReviewId() + ").");
+            return null;
+        }
+
+        // Set the managed hire entity to the review object.
+        review.setHire(existingHire);
+
+        // 2. Save the new review to the database.
         Review savedReview = reviewRepository.save(review);
-        // Re-fetch the saved review with all its details
+        System.out.println("Review created successfully for Hire ID: " + savedReview.getHire().getHireId());
+
+        // 3. Update the job status of the associated hire to "Reviewed".
+        existingHire.setJobStatus("Reviewed");
+        hireRepository.save(existingHire);
+        System.out.println("Updated Hire status to 'Reviewed' for ID: " + existingHire.getHireId());
+
+        // 4. After successfully saving, get the housekeeper's ID from the review's hire.
+        // The rating should be updated only if the review is for a housekeeper.
+        if (savedReview.getHire() != null && savedReview.getHire().getHousekeeper() != null) {
+            Integer housekeeperId = savedReview.getHire().getHousekeeper().getId();
+
+            // 5. Call the HousekeeperService to recalculate the rating.
+            // This ensures the housekeeper's rating is always up-to-date.
+            housekeeperService.calculateAndSetAverageRating(housekeeperId);
+            System.out.println("Triggered average rating update for Housekeeper ID: " + housekeeperId);
+        }
+
+        // Re-fetch the saved review with all its details before returning.
         return reviewRepository.findById(savedReview.getReviewId()).orElse(null);
     }
 
@@ -70,7 +109,7 @@ public class ReviewServiceImpl implements ReviewService {
         existingReview.setScore(review.getScore());
 
         if (review.getHire() != null && review.getHire().getHireId() != null) {
-            // *** แก้ไขตรงนี้ให้เรียกเมธอด fetchByIdWithAllDetails ***
+            // Fetch the hire with all details to ensure it's a managed entity.
             Hire managedHire = hireRepository.fetchByIdWithAllDetails(review.getHire().getHireId())
                     .orElseThrow(() -> new RuntimeException("Hire with ID " + review.getHire().getHireId() + " not found"));
             existingReview.setHire(managedHire);
