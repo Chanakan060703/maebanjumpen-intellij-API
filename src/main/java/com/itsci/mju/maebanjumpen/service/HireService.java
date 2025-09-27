@@ -1,17 +1,25 @@
 package com.itsci.mju.maebanjumpen.service;
 
+import com.itsci.mju.maebanjumpen.dto.HireDTO;
 import com.itsci.mju.maebanjumpen.exception.HirerNotFoundException;
 import com.itsci.mju.maebanjumpen.exception.InsufficientBalanceException;
-import com.itsci.mju.maebanjumpen.model.Hire;
+// import com.itsci.mju.maebanjumpen.model.Hire; // ไม่จำเป็นต้อง import Entity ใน Interface
 import java.util.List;
 
 public interface HireService {
-    List<Hire> getAllHires();
-    Hire getHireById(Integer id);
-    List<Hire> getHiresByHirerId(Integer hirerId);
-    List<Hire> getHiresByHousekeeperId(Integer housekeeperId);
-    Hire saveHire(Hire hire);
-    Hire updateHire(Integer id, Hire hire) throws InsufficientBalanceException, HirerNotFoundException;
+    List<HireDTO> getAllHires();
+    HireDTO getHireById(Integer id);
+    List<HireDTO> getHiresByHirerId(Integer hirerId);
+    List<HireDTO> getHiresByHousekeeperId(Integer housekeeperId);
+
+    // ⬅️ แก้ไขชื่อ DTO ให้ถูกต้อง และใช้ DTO ในการรับข้อมูล
+    HireDTO saveHire(HireDTO hireDto);
+
+    HireDTO updateHire(Integer id, HireDTO hireDto) throws InsufficientBalanceException, HirerNotFoundException;
     void deleteHire(Integer id);
-    Hire addProgressionImagesToHire(Integer hireId, List<String> imageUrls);
+    List<HireDTO> getCompletedHiresByHousekeeperId(Integer housekeeperId);
+    // ⬅️ คืนค่า DTO
+    HireDTO addProgressionImagesToHire(Integer hireId, List<String> imageUrls);
+
+
 }

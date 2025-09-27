@@ -1,6 +1,7 @@
 package com.itsci.mju.maebanjumpen.controller;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.itsci.mju.maebanjumpen.dto.HireDTO;
 import com.itsci.mju.maebanjumpen.exception.HirerNotFoundException;
 import com.itsci.mju.maebanjumpen.exception.HousekeeperNotFoundException;
 import com.itsci.mju.maebanjumpen.exception.InsufficientBalanceException;
@@ -23,9 +24,9 @@ public class HireController {
     private HireService hireService;
 
     @GetMapping
-    public ResponseEntity<List<Hire>> getAllHires() {
+    public ResponseEntity<List<HireDTO>> getAllHires() {
         try {
-            List<Hire> hires = hireService.getAllHires();
+            List<HireDTO> hires = hireService.getAllHires();
             return ResponseEntity.ok(hires);
         } catch (Exception e) {
             e.printStackTrace();
@@ -37,7 +38,7 @@ public class HireController {
     public ResponseEntity<?> getHireById(@PathVariable String id) {
         try {
             int hireId = Integer.parseInt(id);
-            Hire hire = hireService.getHireById(hireId);
+            HireDTO hire = hireService.getHireById(hireId);
             return hire != null ? ResponseEntity.ok(hire) : ResponseEntity.notFound().build();
         } catch (NumberFormatException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid hireId format"));
@@ -48,7 +49,41 @@ public class HireController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> createHire(@RequestBody Hire hire) {
+    public ResponseEntity<?> createHire(@RequestBody HireDTO hire) {
+
+        // --- Comprehensive Validation Check ---
+
+        // 1. ตรวจสอบ hireDetail (ยังคงเป็นปัญหาหลักใน Log)
+        if (hire.getHireDetail() == null || hire.getHireDetail().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "hireDetail is required."));
+        }
+
+        // 2. ตรวจสอบ hireName
+        if (hire.getHireName() == null || hire.getHireName().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "hireName is required."));
+        }
+
+        // 3. ตรวจสอบ paymentAmount
+        if (hire.getPaymentAmount() == null || hire.getPaymentAmount() <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("error", "paymentAmount must be a positive value."));
+        }
+
+        // 4. ตรวจสอบ startDate
+        if (hire.getStartDate() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "startDate is required."));
+        }
+
+        // 5. ตรวจสอบ Hirer ID
+        if (hire.getHirer() == null || hire.getHirer().getId() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Hirer ID is required."));
+        }
+
+        // 6. ตรวจสอบ Housekeeper ID
+        if (hire.getHousekeeper() == null || hire.getHousekeeper().getId() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Housekeeper ID is required."));
+        }
+        // ----------------------------------------
+
         System.out.println("Received Hire for creation: " + hire);
         if (hire.getHirer() != null) {
             System.out.println("Hirer ID: " + hire.getHirer().getId());
@@ -56,13 +91,9 @@ public class HireController {
         if (hire.getHousekeeper() != null) {
             System.out.println("Housekeeper ID: " + hire.getHousekeeper().getId());
         }
-        if (hire.getHireDetail() == null || hire.getHireDetail().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "hireDetail is required"));
-        }
 
         try {
-            Hire savedHire = hireService.saveHire(hire);
+            HireDTO savedHire = hireService.saveHire(hire);
             return new ResponseEntity<>(savedHire, HttpStatus.CREATED); // ส่งคืน 201 Created
         } catch (HirerNotFoundException | HousekeeperNotFoundException e) {
             System.err.println("Error creating hire: " + e.getMessage());
@@ -80,9 +111,9 @@ public class HireController {
     }
 
     @PutMapping("/{hireId}")
-    public ResponseEntity<?> updateHire(@PathVariable int hireId, @RequestBody Hire hireDetailsFromClient) {
+    public ResponseEntity<?> updateHire(@PathVariable int hireId, @RequestBody HireDTO hireDetailsFromClient) {
         try {
-            Hire updatedHire = hireService.updateHire(hireId, hireDetailsFromClient);
+            HireDTO updatedHire = hireService.updateHire(hireId, hireDetailsFromClient);
 
             if (updatedHire != null) {
                 return ResponseEntity.ok(updatedHire);
@@ -110,7 +141,7 @@ public class HireController {
         try {
             System.out.println("Received request to add progression images for hireId: " + hireId);
             System.out.println("Image URLs: " + imageUrls);
-            Hire updatedHire = hireService.addProgressionImagesToHire(hireId, imageUrls);
+            HireDTO updatedHire = hireService.addProgressionImagesToHire(hireId, imageUrls);
             return ResponseEntity.ok(updatedHire);
         } catch (IllegalArgumentException e) {
             System.err.println("Error adding progression images: " + e.getMessage());
@@ -136,7 +167,7 @@ public class HireController {
     @GetMapping("/hirer/{hirerId}")
     public ResponseEntity<?> getHiresByHirerId(@PathVariable int hirerId) {
         try {
-            List<Hire> hires = hireService.getHiresByHirerId(hirerId);
+            List<HireDTO> hires = hireService.getHiresByHirerId(hirerId);
             return ResponseEntity.ok(hires);
         } catch (Exception e) {
             e.printStackTrace();
@@ -147,8 +178,24 @@ public class HireController {
     @GetMapping("/housekeepers/{housekeeperId}")
     public ResponseEntity<?> getHiresByHousekeeperId(@PathVariable int housekeeperId) {
         try {
-            List<Hire> hires = hireService.getHiresByHousekeeperId(housekeeperId);
+            List<HireDTO> hires = hireService.getHiresByHousekeeperId(housekeeperId);
             return ResponseEntity.ok(hires); // ตรงนี้คือที่ Jackson ทำการ Serialize
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 💡 NEW ENDPOINT: ดึงเฉพาะงานจ้างที่เสร็จสมบูรณ์ ('Completed') สำหรับ Housekeeper ID นั้นๆ
+     * ใช้สำหรับคำนวณ 'Jobs Done' และดึง Reviews
+     */
+    @GetMapping("/housekeepers/{housekeeperId}/completed")
+    public ResponseEntity<?> getCompletedHiresByHousekeeperId(@PathVariable int housekeeperId) {
+        try {
+            // 💡 เรียก Service method ใหม่
+            List<HireDTO> hires = hireService.getCompletedHiresByHousekeeperId(housekeeperId);
+            return ResponseEntity.ok(hires);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();

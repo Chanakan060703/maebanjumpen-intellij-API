@@ -19,8 +19,6 @@ public class HireStatusUpdateService {
     @Autowired
     private HireRepository hireRepository;
 
-    // ใช้ ConcurrentHashMap เพื่อเก็บงานที่ต้องทำ
-    // Key: Hire ID, Value: ScheduledFuture (ถ้าต้องการยกเลิก) หรือข้อมูลอื่นๆ
     private final Map<Integer, ScheduledExecutorService> scheduledTasks = new ConcurrentHashMap<>();
 
     // เมธอดสำหรับกำหนดเวลาเปลี่ยนสถานะกลับ
@@ -30,10 +28,8 @@ public class HireStatusUpdateService {
             return;
         }
 
-        // สร้าง executor service ใหม่สำหรับแต่ละงาน เพื่อให้จัดการแยกกันได้
-        // หรือจะใช้ thread pool เดียวกันก็ได้ ถ้าไม่ต้องการยกเลิกงานแต่ละชิ้น
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduledTasks.put(hireId, scheduler); // เก็บ scheduler ไว้ ถ้าต้องการยกเลิกภายหลัง
+        scheduledTasks.put(hireId, scheduler);
 
         scheduler.schedule(() -> {
             try {
@@ -55,7 +51,7 @@ public class HireStatusUpdateService {
             } finally {
                 // ปิด scheduler หลังจากงานเสร็จสิ้น
                 scheduler.shutdown();
-                scheduledTasks.remove(hireId); // ลบงานออกจาก Map เมื่อเสร็จสิ้น
+                scheduledTasks.remove(hireId);
             }
         }, delayInSeconds, TimeUnit.SECONDS);
 

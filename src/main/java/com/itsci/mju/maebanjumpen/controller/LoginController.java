@@ -1,24 +1,22 @@
-// com/itsci/mju/maebanjumpen/controller/LoginController.java
-
 package com.itsci.mju.maebanjumpen.controller;
 
-import com.itsci.mju.maebanjumpen.model.Login;
-import com.itsci.mju.maebanjumpen.model.PartyRole;
+import com.itsci.mju.maebanjumpen.dto.LoginDTO;
+import com.itsci.mju.maebanjumpen.dto.PartyRoleDTO; // ⬅️ Import DTO ที่ถูกต้อง
 import com.itsci.mju.maebanjumpen.service.LoginService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/maeban/login")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class LoginController {
 
-    @Autowired
-    private LoginService loginService;
+    private final LoginService loginService;
 
     @PostMapping("/authenticate")
     public ResponseEntity<?> authenticate(@RequestBody Map<String, String> credentials) {
@@ -32,49 +30,41 @@ public class LoginController {
                 );
             }
 
-            // เรียกใช้ Service เพื่อค้นหา PartyRole ตาม username และ password
-            PartyRole partyRole = loginService.findPartyRoleByLogin(username, password);
+            // 🚨 เรียกใช้ service และรับ PartyRoleDTO กลับมา
+            PartyRoleDTO partyRole = loginService.authenticate(username, password);
 
-            // ตรวจสอบว่า partyRole เป็น null หรือไม่ (ยืนยันตัวตนไม่สำเร็จ)
             if (partyRole == null) {
-                return ResponseEntity.status(401).body(
-                        Map.of("error", "Authentication failed", "message", "Invalid username or password")
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                        Map.of("error", "Authentication failed", "message", "Invalid username or password or account status inactive")
                 );
             }
 
-            // <--- สำคัญ: ตรวจสอบให้แน่ใจว่า PartyRole object ที่คืนค่าไปนี้
-            // มีข้อมูล Person และ Person object นั้นมี accountStatus ที่ถูกต้อง
-            // (เช่น "active", "Ban", "Suspension of account")
-            // การแปลงเป็น JSON จะถูกจัดการโดย Spring/Jackson
+            // 🚨 คืนค่า DTO ที่โหลดสมบูรณ์แล้ว
             return ResponseEntity.ok(partyRole);
 
-        } catch (RuntimeException e) {
-            // จัดการข้อผิดพลาด RuntimeException ที่อาจเกิดขึ้น
+        } catch (Exception e) {
             String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown authentication error";
-            return ResponseEntity.status(401).body(
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                     Map.of("error", "Authentication failed", "message", errorMessage)
-                    // หากยังพบปัญหา Map.of() ไม่รับค่า null ลองใช้ HashMap
-                    // new HashMap<String, String>() {{
-                    //     put("error", "Authentication failed");
-                    //     put("message", errorMessage);
-                    // }}
             );
         }
     }
 
+    // ⬅️ CRUD Methods ใช้ LoginDTO ถูกต้องแล้ว
+
     @PostMapping
-    public ResponseEntity<Login> createLogin(@RequestBody Login login) {
-        Login savedLogin = loginService.saveLogin(login);
-        return ResponseEntity.ok(savedLogin);
+    public ResponseEntity<LoginDTO> createLogin(@RequestBody LoginDTO loginDto) {
+        LoginDTO savedLogin = loginService.saveLogin(loginDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedLogin);
     }
 
     @PutMapping("/{username}")
-    public ResponseEntity<Login> updateLogin(@PathVariable String username, @RequestBody Login login) {
-        if (!username.equals(login.getUsername())) {
-            return ResponseEntity.badRequest().build();
+    public ResponseEntity<LoginDTO> updateLogin(@PathVariable String username, @RequestBody LoginDTO loginDto) {
+        if (!username.equals(loginDto.getUsername())) {
+            return ResponseEntity.badRequest().body(null);
         }
 
-        Login updatedLogin = loginService.updateLogin(username, login);
+        LoginDTO updatedLogin = loginService.updateLogin(username, loginDto);
         if (updatedLogin != null) {
             return ResponseEntity.ok(updatedLogin);
         } else {

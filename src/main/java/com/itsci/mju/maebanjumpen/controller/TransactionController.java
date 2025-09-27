@@ -1,250 +1,273 @@
 package com.itsci.mju.maebanjumpen.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.itsci.mju.maebanjumpen.model.Member;
-import com.itsci.mju.maebanjumpen.model.Transaction;
+import com.itsci.mju.maebanjumpen.dto.TransactionDTO;
 import com.itsci.mju.maebanjumpen.service.MemberService;
 import com.itsci.mju.maebanjumpen.service.OmiseService;
 import com.itsci.mju.maebanjumpen.service.TransactionService;
-import org.im4java.core.ConvertCmd;
-import org.im4java.core.IMOperation;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/maeban/transactions")
+@RequiredArgsConstructor
 public class TransactionController {
 
-    @Autowired
-    private TransactionService transactionService;
+    private final TransactionService transactionService;
+    private final MemberService memberService;
+    private final OmiseService omiseService;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private MemberService memberService;
-
-    @Autowired
-    private OmiseService omiseService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    // ------------------------------------------------------------------
+    // GET MAPPINGS (เหมือนเดิม)
+    // ------------------------------------------------------------------
 
     @GetMapping
-    public ResponseEntity<List<Transaction>> getAllTransactions() {
-        List<Transaction> transactions = transactionService.getAllTransactions();
+    public ResponseEntity<List<TransactionDTO>> getAllTransactions() {
+        List<TransactionDTO> transactions = transactionService.getAllTransactions();
         return ResponseEntity.ok(transactions);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Transaction> getTransactionById(@PathVariable Integer id) {
-        Optional<Transaction> transaction = transactionService.getTransactionById(id);
+    public ResponseEntity<TransactionDTO> getTransactionById(@PathVariable Integer id) {
+        Optional<TransactionDTO> transaction = transactionService.getTransactionById(id);
         return transaction.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PostMapping
-    public ResponseEntity<Transaction> createTransaction(@RequestBody Transaction transaction) {
-        try {
-            if (transaction.getTransactionDate() == null) {
-                transaction.setTransactionDate(LocalDateTime.now());
-            }
-            if (transaction.getTransactionStatus() == null || transaction.getTransactionStatus().isEmpty()) {
-                transaction.setTransactionStatus("Pending");
-            }
-
-            Transaction savedTransaction = transactionService.saveTransaction(transaction);
-            return ResponseEntity.status(HttpStatus.CREATED).body(savedTransaction);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-    }
-
-    @PatchMapping("/{transactionId}/status")
-    public ResponseEntity<Map<String, String>> updateTransactionStatus(
-            @PathVariable Integer transactionId,
-            @RequestBody Map<String, String> requestBody) {
-        try {
-            String newStatus = requestBody.get("newStatus");
-            String accountManagerIdStr = requestBody.get("accountManagerId");
-
-            if (newStatus == null || newStatus.isEmpty() || accountManagerIdStr == null || accountManagerIdStr.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "New status and accountManagerId are required."));
-            }
-
-            Integer accountManagerId = Integer.parseInt(accountManagerIdStr);
-            Optional<Transaction> optionalTransaction = transactionService.getTransactionById(transactionId);
-
-            if (optionalTransaction.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Transaction not found."));
-            }
-
-            Transaction transaction = optionalTransaction.get();
-            transaction.setTransactionStatus(newStatus);
-
-            if ("Approved".equalsIgnoreCase(newStatus)) {
-                transaction.setTransactionApprovalDate(LocalDateTime.now());
-            }
-
-            transactionService.saveTransaction(transaction);
-            return ResponseEntity.ok(Map.of("message", "Transaction status updated successfully."));
-        } catch (NumberFormatException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid accountManagerId format."));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to update transaction status: " + e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Transaction> updateTransaction(@PathVariable Integer id, @RequestBody Transaction transactionDetails) {
-        Optional<Transaction> optionalTransaction = transactionService.getTransactionById(id);
-        if (optionalTransaction.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Transaction existingTransaction = optionalTransaction.get();
-
-        if (transactionDetails.getTransactionType() != null) {
-            existingTransaction.setTransactionType(transactionDetails.getTransactionType());
-        }
-        if (transactionDetails.getTransactionAmount() != null) {
-            existingTransaction.setTransactionAmount(transactionDetails.getTransactionAmount());
-        }
-        if (transactionDetails.getTransactionDate() != null) {
-            existingTransaction.setTransactionDate(transactionDetails.getTransactionDate());
-        }
-        if (transactionDetails.getPrompayNumber() != null) {
-            existingTransaction.setPrompayNumber(transactionDetails.getPrompayNumber());
-        }
-        if (transactionDetails.getBankAccountNumber() != null) {
-            existingTransaction.setBankAccountNumber(transactionDetails.getBankAccountNumber());
-        }
-        if (transactionDetails.getBankAccountName() != null) {
-            existingTransaction.setBankAccountName(transactionDetails.getBankAccountName());
-        }
-
-        Transaction updatedTransaction = transactionService.saveTransaction(existingTransaction);
-        return ResponseEntity.ok(updatedTransaction);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable Integer id) {
-        if (!transactionService.getTransactionById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        transactionService.deleteTransaction(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping(params = "memberId")
-    public ResponseEntity<List<Transaction>> getTransactionsByMemberId(@RequestParam Integer memberId) {
-        List<Transaction> transactions = transactionService.getTransactionsByMemberId(memberId);
+    public ResponseEntity<List<TransactionDTO>> getTransactionsByMemberId(@RequestParam Integer memberId) {
+        List<TransactionDTO> transactions = transactionService.getTransactionsByMemberId(memberId);
         if (transactions.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.ok(transactions);
     }
 
-    @PostMapping("/qrcode/deposit")
-    public ResponseEntity<Map<String, Object>> createDepositQrCode(@RequestBody Map<String, Object> requestBody) {
-        Integer memberId = (Integer) requestBody.get("memberId");
-        Double amount = ((Number) requestBody.get("amount")).doubleValue();
-
-        if (memberId == null || amount == null || amount <= 0) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Member ID and a positive amount are required."));
-        }
-
-        Transaction savedTransaction = null;
-
-        try {
-            Transaction depositTransaction = new Transaction();
-            Member member = memberService.getMemberById(memberId)
-                    .orElseThrow(() -> new IllegalArgumentException("Member not found with ID: " + memberId));
-            depositTransaction.setMember(member);
-            depositTransaction.setTransactionType("DEPOSIT");
-            depositTransaction.setTransactionAmount(amount);
-            depositTransaction.setTransactionDate(LocalDateTime.now());
-            depositTransaction.setTransactionStatus("Pending Payment");
-
-            savedTransaction = transactionService.saveTransaction(depositTransaction);
-
-            Map<String, String> omiseQrResponse = omiseService.createPromptPayQRCode(
-                    amount,
-                    String.valueOf(savedTransaction.getTransactionId())
-            );
-
-            if (omiseQrResponse != null && omiseQrResponse.containsKey("qrCodeImageBase64")) {
-                String svgBase64 = omiseQrResponse.get("qrCodeImageBase64");
-
-                // ไม่ต้องทำการแปลง SVG เป็น PNG อีกต่อไป
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("transactionId", savedTransaction.getTransactionId());
-                response.put("qrCodeImageBase64", svgBase64); // ส่ง SVG กลับไปตรงๆ
-
-                savedTransaction.setTransactionStatus("QR Generated");
-                transactionService.saveTransaction(savedTransaction);
-
-                return ResponseEntity.ok(response);
-            } else {
-                System.err.println("OmiseService did not return qrCodeImageBase64. Full response from OmiseService: " + omiseQrResponse);
-                if (savedTransaction != null) {
-                    savedTransaction.setTransactionStatus("Failed");
-                    transactionService.saveTransaction(savedTransaction);
-                }
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(Map.of("error", "Failed to generate QR Code from Omise API or no QR data returned."));
-            }
-        } catch (IllegalArgumentException e) {
-            System.err.println("Validation/Argument Error: " + e.getMessage());
-            if (savedTransaction != null) {
-                savedTransaction.setTransactionStatus("Failed");
-                transactionService.saveTransaction(savedTransaction);
-            }
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            System.err.println("Unexpected error generating deposit QR code: " + e.getMessage());
-            e.printStackTrace();
-            if (savedTransaction != null) {
-                try {
-                    savedTransaction.setTransactionStatus("Failed");
-                    transactionService.saveTransaction(savedTransaction);
-                } catch (Exception ex) {
-                    System.err.println("Error saving transaction status to Failed after QR generation error: " + ex.getMessage());
-                }
-            }
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error generating deposit QR code: " + e.getMessage()));
-        }
-    }
-
     @GetMapping("/{transactionId}/status")
     public ResponseEntity<Map<String, String>> getTransactionStatus(@PathVariable Integer transactionId) {
-        Optional<Transaction> optionalTransaction = transactionService.getTransactionById(transactionId);
+        Optional<TransactionDTO> optionalTransaction = transactionService.getTransactionById(transactionId);
         Map<String, String> response = new HashMap<>();
 
         if (optionalTransaction.isPresent()) {
-            Transaction transaction = optionalTransaction.get();
+            TransactionDTO transaction = optionalTransaction.get();
             response.put("transactionId", String.valueOf(transaction.getTransactionId()));
             response.put("transactionStatus", transaction.getTransactionStatus());
-            System.out.println("DEBUG: getTransactionStatus for ID " + transactionId + " -> Status: " + transaction.getTransactionStatus());
             return ResponseEntity.ok(response);
         } else {
-            System.err.println("DEBUG: getTransactionStatus for ID " + transactionId + " -> Not Found.");
             response.put("error", "Transaction not found");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
+    // ------------------------------------------------------------------
+    // POST/PUT/PATCH/DELETE MAPPINGS (เหมือนเดิม)
+    // ------------------------------------------------------------------
+
+    @PostMapping // Create
+    public ResponseEntity<TransactionDTO> createTransaction(@RequestBody TransactionDTO transactionDto) {
+        try {
+            TransactionDTO savedTransaction = transactionService.saveTransaction(transactionDto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(savedTransaction);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create transaction: " + e.getMessage(), e);
+        }
+    }
+
+    @PatchMapping("/{transactionId}/status") // Update Status Endpoint
+    public ResponseEntity<Map<String, String>> updateTransactionStatus(
+            @PathVariable Integer transactionId,
+            @RequestBody Map<String, String> requestBody) {
+        try {
+            String newStatus = requestBody.get("newStatus");
+
+            if (newStatus == null || newStatus.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "New status is required."));
+            }
+
+            Optional<TransactionDTO> updatedTransaction = transactionService.updateWithdrawalRequestStatus(transactionId, newStatus);
+
+            if (updatedTransaction.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Transaction not found."));
+            }
+
+            return ResponseEntity.ok(Map.of("message", "Transaction status updated successfully.",
+                    "transactionId", String.valueOf(updatedTransaction.get().getTransactionId()),
+                    "newStatus", updatedTransaction.get().getTransactionStatus()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update transaction status: " + e.getMessage(), e);
+        }
+    }
+
+    @PutMapping("/{id}") // Full Update
+    public ResponseEntity<TransactionDTO> updateTransaction(@PathVariable Integer id, @RequestBody TransactionDTO transactionDto) {
+
+        if (transactionService.getTransactionById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        transactionDto.setTransactionId(id);
+
+        try {
+            TransactionDTO updatedTransaction = transactionService.saveTransaction(transactionDto);
+            return ResponseEntity.ok(updatedTransaction);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update transaction: " + e.getMessage(), e);
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTransaction(@PathVariable Integer id) {
+        try {
+            transactionService.deleteTransaction(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // QR Code Generation (ส่วนที่ได้รับการแก้ไข)
+    // ------------------------------------------------------------------
+
+    @PostMapping("/qrcode/deposit")
+    public ResponseEntity<Map<String, Object>> createDepositQrCode(@RequestBody Map<String, Object> requestBody) {
+
+        // --- ส่วนที่ 1: การดึงและแปลง Member ID/Amount อย่างปลอดภัย ---
+        Integer memberId = null;
+        Double amount = null;
+
+        try {
+            // 1. ดึง memberId
+            Object memberIdObj = requestBody.get("memberId");
+            if (memberIdObj != null) {
+                if (memberIdObj instanceof Number) {
+                    memberId = ((Number) memberIdObj).intValue();
+                } else if (memberIdObj instanceof String) {
+                    memberId = Integer.parseInt((String) memberIdObj);
+                }
+            }
+
+            // 2. ดึง amount
+            Object amountObj = requestBody.get("amount");
+            if (amountObj != null) {
+                if (amountObj instanceof Number) {
+                    amount = ((Number) amountObj).doubleValue();
+                } else if (amountObj instanceof String) {
+                    amount = Double.parseDouble((String) amountObj);
+                }
+            }
+
+        } catch (ClassCastException | NumberFormatException e) {
+            System.err.println("Type Casting Error in QR Code Request: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid data type for memberId or amount. Please check the request format."));
+        }
+        // --- สิ้นสุดส่วนที่ 1 ---
+
+
+        // 3. ตรวจสอบความสมบูรณ์ของข้อมูลที่จำเป็น
+        if (memberId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Member ID is missing or invalid in the request body."));
+        }
+        if (amount == null || amount <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("error", "A positive amount is required."));
+        }
+
+        TransactionDTO depositTransactionDto = null;
+        TransactionDTO savedTransactionDto = null;
+
+
+        try {
+            // 4. สร้าง DTO สำหรับ Transaction ใหม่
+            depositTransactionDto = new TransactionDTO();
+            depositTransactionDto.setMemberId(memberId);
+            depositTransactionDto.setTransactionType("DEPOSIT");
+            depositTransactionDto.setTransactionAmount(amount);
+            depositTransactionDto.setTransactionStatus("Pending Payment");
+
+            // 5. Save Transaction เพื่อให้ได้ ID (Log ยืนยันว่าสำเร็จ)
+            savedTransactionDto = transactionService.saveTransaction(depositTransactionDto);
+
+            // 6. เรียก OmiseService (Log ยืนยันว่าสำเร็จ)
+            Map<String, String> omiseQrResponse = omiseService.createPromptPayQRCode(
+                    amount,
+                    String.valueOf(savedTransactionDto.getTransactionId())
+            );
+
+            if (omiseQrResponse != null && omiseQrResponse.containsKey("qrCodeImageBase64")) {
+                String svgBase64 = omiseQrResponse.get("qrCodeImageBase64");
+
+                // 7. Update Transaction Status: QR Generated (🎯 จุดแก้ไขปัญหา 400)
+                savedTransactionDto.setTransactionStatus("QR Generated");
+
+                // 💥 FIX: รับประกันว่า memberId ไม่หายไปก่อนบันทึกครั้งที่ 2
+                // (ใช้ตัวแปร memberId ที่ดึงมาจาก Request Body)
+                if (savedTransactionDto.getMemberId() == null) {
+                    savedTransactionDto.setMemberId(memberId);
+                }
+
+                // Save the updated transaction (Log น่าจะผ่านจุดนี้แล้ว)
+                transactionService.saveTransaction(savedTransactionDto);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("transactionId", savedTransactionDto.getTransactionId());
+                response.put("qrCodeImageBase64", svgBase64);
+
+                return ResponseEntity.ok(response); // ส่ง 200 OK กลับไป
+            } else {
+                // 8. Handle Omise Failure (API Success แต่ไม่มี QR Data)
+                if (savedTransactionDto != null) {
+                    savedTransactionDto.setTransactionStatus("Failed");
+                    transactionService.saveTransaction(savedTransactionDto);
+                }
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", "Failed to generate QR Code from Omise API or no QR data returned."));
+            }
+        } catch (IllegalArgumentException e) {
+            // 9. Handle OmiseService/TransactionService Error (เช่น Minimum amount, Invalid Member ID)
+            if (savedTransactionDto != null) {
+                try {
+                    savedTransactionDto.setTransactionStatus("Failed");
+                    transactionService.saveTransaction(savedTransactionDto);
+                } catch (Exception ex) { /* ignore secondary save error */ }
+            } else if (depositTransactionDto != null && depositTransactionDto.getTransactionId() != null) {
+                try {
+                    depositTransactionDto.setTransactionStatus("Failed");
+                    transactionService.saveTransaction(depositTransactionDto);
+                } catch (Exception ex) { /* ignore secondary save error */ }
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            // 10. Handle Omise API Network/HTTP Error
+            if (savedTransactionDto != null) {
+                try {
+                    savedTransactionDto.setTransactionStatus("Failed");
+                    transactionService.saveTransaction(savedTransactionDto);
+                } catch (Exception ex) { /* ignore secondary save error */ }
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Omise API Error: " + e.getMessage(), e);
+        } catch (Exception e) {
+            // 11. Handle General Error
+            if (savedTransactionDto != null) {
+                try {
+                    savedTransactionDto.setTransactionStatus("Failed");
+                    transactionService.saveTransaction(savedTransactionDto);
+                } catch (Exception ex) { /* ignore secondary save error */ }
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error generating deposit QR code: " + e.getMessage(), e);
+        }
+    }
 }

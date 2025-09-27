@@ -1,5 +1,6 @@
 package com.itsci.mju.maebanjumpen.controller;
 
+import com.itsci.mju.maebanjumpen.dto.PersonDTO;
 import com.itsci.mju.maebanjumpen.model.Person;
 import com.itsci.mju.maebanjumpen.service.PersonService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,26 +17,26 @@ public class PersonController {
     private PersonService personService;
 
     @GetMapping
-    public ResponseEntity<List<Person>> getAllPersons() {
-        List<Person> persons = personService.getAllPersons();
+    public ResponseEntity<List<PersonDTO>> getAllPersons() {
+        List<PersonDTO> persons = personService.getAllPersons();
         return ResponseEntity.ok(persons);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Person> getPersonById(@PathVariable int id) {
-        Person person = personService.getPersonById(id);
+    public ResponseEntity<PersonDTO> getPersonById(@PathVariable int id) {
+        PersonDTO person = personService.getPersonById(id);
         return ResponseEntity.ok(person);
     }
 
     @PostMapping
-    public ResponseEntity<Person> createPerson(@RequestBody Person person) {
-        Person savedPerson = personService.savePerson(person);
+    public ResponseEntity<PersonDTO> createPerson(@RequestBody PersonDTO person) {
+        PersonDTO savedPerson = personService.savePerson(person);
         return ResponseEntity.ok(savedPerson);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Person> updatePerson(@PathVariable int id, @RequestBody Person person) {
-        Person updatedPerson = personService.updatePerson(id, person);
+    public ResponseEntity<PersonDTO> updatePerson(@PathVariable int id, @RequestBody PersonDTO person) {
+        PersonDTO updatedPerson = personService.updatePerson(id, person);
         return ResponseEntity.ok(updatedPerson);
     }
 
@@ -46,10 +47,10 @@ public class PersonController {
     }
 
     @PutMapping("/{id}/update-picture-url")
-    public ResponseEntity<Person> updatePersonPictureUrl(
+    public ResponseEntity<PersonDTO> updatePersonPictureUrl(
             @PathVariable int id,
             @RequestParam String newBaseUrl) {
-        Person updatedPerson = personService.updatePersonPictureUrl(id, newBaseUrl);
+        PersonDTO updatedPerson = personService.updatePersonPictureUrl(id, newBaseUrl);
         if (updatedPerson != null) {
             return ResponseEntity.ok(updatedPerson);
         } else {

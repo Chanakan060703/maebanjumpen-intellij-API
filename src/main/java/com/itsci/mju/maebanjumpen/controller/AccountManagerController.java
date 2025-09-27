@@ -1,5 +1,7 @@
 package com.itsci.mju.maebanjumpen.controller;
 
+import com.itsci.mju.maebanjumpen.dto.AccountManagerDTO;
+import com.itsci.mju.maebanjumpen.mapper.AccountManagerMapper;
 import com.itsci.mju.maebanjumpen.model.AccountManager;
 import com.itsci.mju.maebanjumpen.service.AccountManagerService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,26 +18,26 @@ public class AccountManagerController {
     private AccountManagerService accountManagerService;
 
     @GetMapping
-    public ResponseEntity<List<AccountManager>> getAllAccountManagers() {
-        List<AccountManager> accountManagers = accountManagerService.getAllAccountManagers();
+    public ResponseEntity<List<AccountManagerDTO>> getAllAccountManagers() {
+        List<AccountManagerDTO> accountManagers = accountManagerService.getAllAccountManagers();
         return ResponseEntity.ok(accountManagers);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AccountManager> getAccountManagerById(@PathVariable int id) {
-        AccountManager accountManager = accountManagerService.getAccountManagerById(id);
+    public ResponseEntity<AccountManagerDTO> getAccountManagerById(@PathVariable int id) {
+        AccountManagerDTO accountManager = accountManagerService.getAccountManagerById(id);
         return ResponseEntity.ok(accountManager);
     }
 
     @PostMapping
-    public ResponseEntity<AccountManager> createAccountManager(@RequestBody AccountManager accountManager) {
-        AccountManager savedAccountManager = accountManagerService.saveAccountManager(accountManager);
+    public ResponseEntity<AccountManagerDTO> createAccountManager(@RequestBody AccountManagerDTO accountManager) {
+        AccountManagerDTO savedAccountManager = accountManagerService.saveAccountManager(accountManager);
         return ResponseEntity.ok(savedAccountManager);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<AccountManager> updateAccountManager(@PathVariable int id, @RequestBody AccountManager accountManager) {
-        AccountManager updatedAccountManager = accountManagerService.updateAccountManager(id, accountManager);
+    public ResponseEntity<AccountManagerDTO> updateAccountManager(@PathVariable int id, @RequestBody AccountManagerDTO accountManager) {
+        AccountManagerDTO updatedAccountManager = accountManagerService.updateAccountManager(id, accountManager);
         return ResponseEntity.ok(updatedAccountManager);
     }
 

@@ -1,81 +1,115 @@
 package com.itsci.mju.maebanjumpen.service;
 
+import com.itsci.mju.maebanjumpen.dto.PartyRoleDTO; // ⬅️ DTO
+import com.itsci.mju.maebanjumpen.mapper.PartyRoleMapper; // ⬅️ Mapper
 import com.itsci.mju.maebanjumpen.model.*;
 import com.itsci.mju.maebanjumpen.repository.PartyRoleRepository;
 import com.itsci.mju.maebanjumpen.repository.PersonRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor; // ⬅️ ใช้แทน @Autowired
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // <-- เพิ่ม import นี้
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor // ⬅️ ใช้ DI แบบ Constructor
 public class PartyRoleServiceImpl implements PartyRoleService {
 
-    @Autowired
-    private PartyRoleRepository partyRoleRepository;
-
-    @Autowired
-    private PersonRepository personRepository; // อาจจะไม่ได้ใช้โดยตรงในนี้ แต่เก็บไว้
+    private final PartyRoleRepository partyRoleRepository;
+    private final PartyRoleMapper partyRoleMapper; // ⬅️ Inject Mapper
+    private final PersonRepository personRepository;
 
     @Override
-    @Transactional // สำหรับการบันทึก
-    public PartyRole savePartyRole(PartyRole partyRole) {
-        return partyRoleRepository.save(partyRole);
-    }
+    @Transactional
+    public PartyRoleDTO savePartyRole(PartyRoleDTO partyRoleDto) {
 
-    @Override
-    @Transactional(readOnly = true) // <--- เพิ่ม @Transactional(readOnly = true)
-    public PartyRole getPartyRoleById(int id) {
-        // หาก PartyRole มีความสัมพันธ์แบบ LAZY ที่คุณต้องการให้โหลด
-        // ต้องบังคับโหลดใน Transaction นี้
-        PartyRole partyRole = partyRoleRepository.findById(id).orElse(null);
-        if (partyRole instanceof Hirer) {
-            // ((Hirer) partyRole).getHires().size(); // ถ้าต้องการ hires ของ Hirer
-        } else if (partyRole instanceof Housekeeper) {
-            // ((Housekeeper) partyRole).getHires().size(); // ถ้าต้องการ hires ของ Housekeeper
-            // ((Housekeeper) partyRole).getHousekeeperSkills().size(); // ถ้าต้องการ skills ของ Housekeeper
+        // 1. ตรวจสอบว่ามี Person ID ที่ใช้เชื่อมโยงมาใน DTO หรือไม่
+        if (partyRoleDto.getPerson() == null || partyRoleDto.getPerson().getPersonId() == null) {
+            // หากไม่มี ID, โยน Exception ที่เหมาะสม (เช่น Bad Request หรือ Validation)
+            throw new IllegalArgumentException("Person ID is required to create a PartyRole.");
         }
-        return partyRole;
+
+        // 2. ดึง Person Entity ที่มีอยู่
+        Integer personId = partyRoleDto.getPerson().getPersonId();
+        Person existingPerson = personRepository.findById(personId)
+                .orElseThrow(() -> new RuntimeException("Person ID: " + personId + " not found. Failed to link PartyRole.")); // ⚠️ ตรวจสอบ ID
+
+        // 3. แปลง DTO -> Entity
+        PartyRole partyRole = partyRoleMapper.toEntity(partyRoleDto);
+
+        // 4. เชื่อมโยง Person Entity เข้ากับ PartyRole Entity
+        partyRole.setPerson(existingPerson); // ⬅️ นี่คือบรรทัดสำคัญที่ขาดหายไป
+
+        // 5. บันทึก PartyRole Entity
+        PartyRole savedPartyRole = partyRoleRepository.save(partyRole);
+
+        // 6. แปลง Entity -> DTO
+        return partyRoleMapper.toDto(savedPartyRole);
     }
 
+
+    // 2. getPartyRoleById: คืนค่า PartyRoleDTO
     @Override
-    @Transactional(readOnly = true) // <--- เพิ่ม @Transactional(readOnly = true)
-    public List<PartyRole> getAllPartyRoles() {
+    @Transactional(readOnly = true)
+    public PartyRoleDTO getPartyRoleById(int id) { // ⬅️ เปลี่ยน Output
+        Optional<PartyRole> partyRoleOpt = partyRoleRepository.findById(id);
+
+        // ใช้ map() เพื่อแปลง Optional<Entity> เป็น Optional<DTO>
+        return partyRoleOpt.map(partyRoleMapper::toDto)
+                .orElse(null); // ⬅️ คืนค่า DTO หรือ null
+
+        // ⚠️ หมายเหตุ: การจัดการ Lazy Loading (เช่น partyRole instanceof Hirer)
+        // ควรถูกย้ายไปใช้ @EntityGraph ใน Repository หรือจัดการใน Mapper
+        // การบังคับโหลดใน Service นี้อาจไม่จำเป็นหากใช้ Mapper และ EAGER/EntityGraph อย่างถูกต้อง
+    }
+
+    // 3. getAllPartyRoles: คืนค่า List<PartyRoleDTO>
+    @Override
+    @Transactional(readOnly = true)
+    public List<PartyRoleDTO> getAllPartyRoles() { // ⬅️ เปลี่ยน Output
         List<PartyRole> partyRoles = partyRoleRepository.findAll();
-        // หากมี PartyRole ที่มีความสัมพันธ์แบบ LAZY ที่คุณต้องการให้โหลด
-        // ต้องวนลูปบังคับโหลดแต่ละตัว
-        for (PartyRole partyRole : partyRoles) {
-            if (partyRole instanceof Hirer) {
-                // ((Hirer) partyRole).getHires().size();
-            } else if (partyRole instanceof Housekeeper) {
-                // ((Housekeeper) partyRole).getHires().size();
-                // ((Housekeeper) partyRole).getHousekeeperSkills().size();
-            }
-        }
-        return partyRoles;
+
+        // ⬅️ ใช้ Mapper แปลง List<Entity> -> List<DTO>
+        return partyRoleMapper.toDtoList(partyRoles);
     }
 
+    // 4. updatePartyRole: รับ DTO, ดึง Entity, อัปเดต, บันทึก, แปลงกลับเป็น DTO
     @Override
-    @Transactional // สำหรับการอัปเดต
-    public PartyRole updatePartyRole(int id, PartyRole partyRole) {
-        if (partyRoleRepository.existsById(id)) {
-            // ดึง Entity ที่มีอยู่เพื่ออัปเดต ไม่ใช่สร้างใหม่แล้ว set id
-            // เพราะอาจมี field อื่นๆ ที่ไม่ได้ส่งมาใน partyRole object ใหม่
-            PartyRole existingPartyRole = partyRoleRepository.findById(id).orElse(null);
-            if (existingPartyRole != null) {
-                // ทำการ copy properties จาก partyRole ไปยัง existingPartyRole
-                // หรือใช้ model mapper
-                // ตัวอย่างง่ายๆ: existingPartyRole.setSomeField(partyRole.getSomeField());
-                return partyRoleRepository.save(existingPartyRole);
+    @Transactional
+    public PartyRoleDTO updatePartyRole(int id, PartyRoleDTO partyRoleDto) { // ⬅️ เปลี่ยน Input/Output
+        // 1. ดึง Entity เดิม
+        return partyRoleRepository.findById(id).map(existingPartyRole -> {
+
+            // 2. แปลง DTO ขาเข้าเป็น Entity เพื่อดึงค่าที่ต้องการอัปเดต (แต่ไม่บันทึก)
+            PartyRole updatedDetails = partyRoleMapper.toEntity(partyRoleDto);
+
+            // 3. ทำการอัปเดต Field ด้วยมือ (หรือใช้ MapStruct @Mapping target)
+
+            // อัปเดต Person details (ถ้ามี)
+            if (existingPartyRole.getPerson() != null && updatedDetails.getPerson() != null) {
+                // ⚠️ Logic การอัปเดตที่ซับซ้อนควรถูกย้ายไปใน Mapper หรือมี Helper Method
+                // ตัวอย่าง: อัปเดตเฉพาะ Person
+                // existingPartyRole.getPerson().setFirstName(updatedDetails.getPerson().getFirstName());
+                // ... (อื่นๆ) ...
             }
-        }
-        return null;
+
+            // ⚠️ การอัปเดตที่ถูกต้องควรใช้ MapStruct @Mapping(target = "id", ignore = true)
+            // และ copy fields ทั้งหมดจาก updatedDetails ไปยัง existingPartyRole
+            // แต่เนื่องจากตรรกะการอัปเดตซับซ้อน (มี Subtypes/Relations) จึงมักเขียนด้วยมือ
+
+            // 4. บันทึก
+            PartyRole savedRole = partyRoleRepository.save(existingPartyRole);
+
+            // 5. แปลง Entity -> DTO
+            return partyRoleMapper.toDto(savedRole);
+
+        }).orElseThrow(() -> new RuntimeException("PartyRole not found with ID: " + id));
     }
 
+    // 5. deletePartyRole: ไม่มี DTO I/O
     @Override
-    @Transactional // สำหรับการลบ
+    @Transactional
     public void deletePartyRole(int id) {
         partyRoleRepository.deleteById(id);
     }

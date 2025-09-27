@@ -1,17 +1,20 @@
 package com.itsci.mju.maebanjumpen.service;
 
-import com.itsci.mju.maebanjumpen.model.Review;
+import com.itsci.mju.maebanjumpen.dto.ReviewDTO;
+import com.itsci.mju.maebanjumpen.model.Review; // ⚠️ ไม่ต้องใช้ Review Entity เป็น Input/Output ใน Interface
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 public interface ReviewService {
-    List<Review> getAllReviews();
-    Review getReviewById(int id);
-    Review saveReview(Review review);
+    List<ReviewDTO> getAllReviews();
+    ReviewDTO getReviewById(int id);
+    ReviewDTO saveReview(ReviewDTO reviewDto);
     void deleteReview(int id);
-    Review getReviewByHireId(int hireId); // เมธอดนี้อัปเดตเป็น findByHire_HireId แล้วใน ServiceImpl
+    ReviewDTO getReviewByHireId(int hireId);
 
-    Review updateReview(int id, Review review);
+    // ✅ แก้ไข: เปลี่ยน Review เป็น ReviewDTO
+    ReviewDTO updateReview(int id, ReviewDTO reviewDto); // ⬅️ นี่คือตัวที่ถูกต้อง
 
-    List<Review> getReviewsByHireId(int hireId);
+    List<ReviewDTO> getReviewsByHireId(int hireId);
 }

@@ -15,6 +15,6 @@ import lombok.NoArgsConstructor;
 @Data
 @JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
 public class Admin extends PartyRole {
-    @Column(name = "admin_status", length = 255)
-    private String adminStatus;
+        @Column(name = "admin_status", length = 255)
+        private String adminStatus;
 }

@@ -1,14 +1,14 @@
 package com.itsci.mju.maebanjumpen.service;
 
-import com.itsci.mju.maebanjumpen.model.AccountManager;
+import com.itsci.mju.maebanjumpen.dto.AccountManagerDTO;
 
 import java.util.List;
 
 public interface AccountManagerService {
-    List<AccountManager> getAllAccountManagers();
-    AccountManager getAccountManagerById(int id);
-    AccountManager saveAccountManager(AccountManager accountManager);
+    List<AccountManagerDTO> getAllAccountManagers();
+    AccountManagerDTO getAccountManagerById(int id);
+    AccountManagerDTO saveAccountManager(AccountManagerDTO accountManager);
     void deleteAccountManager(int id);
 
-    AccountManager updateAccountManager(int id, AccountManager accountManager);
+    AccountManagerDTO updateAccountManager(int id, AccountManagerDTO accountManager);
 }

@@ -1,13 +1,7 @@
 package com.itsci.mju.maebanjumpen.model;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.itsci.mju.maebanjumpen.serializer.ReportSerializer;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,7 +10,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-@JsonSerialize(using = ReportSerializer.class)
 public class Report {
 
     @Id
@@ -33,26 +26,33 @@ public class Report {
     @Column(name = "reportDate", nullable = false)
     private LocalDateTime reportDate;
 
-    @Column(name = "reportStatus", nullable = false)
+    @Column(name = "reportStatus", nullable = false, length = 30)
     private String reportStatus;
 
+    // ----------------- RELATIONSHIPS -----------------
+
+    /** ผู้รายงาน (อาจเป็น Hirer หรือ Housekeeper) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id")
     private PartyRole reporter;
 
+    /** ฝั่งผู้ว่าจ้าง (Hirer) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hirer_id")
     private Member hirer;
 
+    /** ฝั่งแม่บ้าน (Housekeeper) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "housekeeper_id")
     private Member housekeeper;
 
+    /** โทษที่ได้รับ (ถ้ามี) */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "penalty_id")
     private Penalty penalty;
 
+    /** ผูกกับงานจ้าง (ต้องมีเสมอ) */
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hire_id", unique = true, nullable = false) // 'unique = true' is key
+    @JoinColumn(name = "hire_id", unique = true, nullable = false)
     private Hire hire;
 }

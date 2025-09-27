@@ -1,13 +1,15 @@
 package com.itsci.mju.maebanjumpen.model;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
-import com.fasterxml.jackson.annotation.ObjectIdGenerators;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.itsci.mju.maebanjumpen.serializer.HireSerializer;
-import jakarta.persistence.*;
-import lombok.*;
-import lombok.EqualsAndHashCode.Exclude;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.EqualsAndHashCode.Exclude;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,9 +22,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class, property = "@id")
-@JsonSerialize(using = HireSerializer.class)
-@JsonIgnoreProperties(ignoreUnknown = true) // <-- เพิ่มบรรทัดนี้เพื่อละเว้น field ที่ไม่รู้จัก
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Hire {
 
 	@Id
@@ -71,10 +71,21 @@ public class Hire {
 	@Exclude
 	private Housekeeper housekeeper;
 
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "skill_type_id")
+	@ToString.Exclude
+	@Exclude
+	private SkillType skillType;
+
 	@OneToOne(mappedBy = "hire", fetch = FetchType.LAZY)
 	@ToString.Exclude
 	@Exclude
 	private Review review;
+
+	@ElementCollection
+	@CollectionTable(name = "hire_additional_skills", joinColumns = @JoinColumn(name = "hire_id"))
+	@Column(name = "additional_skill_type_id")
+	private List<Integer> additionalSkillTypeIds;
 
 	public void setReview(Review review) {
 		if (this.review != null && this.review.getHire() != null) {

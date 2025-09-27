@@ -1,5 +1,6 @@
 package com.itsci.mju.maebanjumpen.controller;
 
+import com.itsci.mju.maebanjumpen.dto.AdminDTO;
 import com.itsci.mju.maebanjumpen.model.Admin;
 import com.itsci.mju.maebanjumpen.service.AdminService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,26 +17,26 @@ public class AdminController {
     private AdminService adminService;
 
     @GetMapping
-    public ResponseEntity<List<Admin>> getAllAdmins() {
-        List<Admin> admins = adminService.getAllAdmins();
+    public ResponseEntity<List<AdminDTO>> getAllAdmins() {
+        List<AdminDTO> admins = adminService.getAllAdmins();
         return ResponseEntity.ok(admins);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Admin> getAdminById(@PathVariable int id) {
-        Admin admin = adminService.getAdminById(id);
+    public ResponseEntity<AdminDTO> getAdminById(@PathVariable int id) {
+        AdminDTO admin = adminService.getAdminById(id);
         return ResponseEntity.ok(admin);
     }
 
     @PostMapping
-    public ResponseEntity<Admin> createAdmin(@RequestBody Admin admin) {
-        Admin savedAdmin = adminService.saveAdmin(admin);
+    public ResponseEntity<AdminDTO> createAdmin(@RequestBody AdminDTO admin) {
+        AdminDTO savedAdmin = adminService.saveAdmin(admin);
         return ResponseEntity.ok(savedAdmin);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Admin> updateAdmin(@PathVariable int id, @RequestBody Admin admin) {
-        Admin updatedAdmin = adminService.updateAdmin(id, admin);
+    public ResponseEntity<AdminDTO> updateAdmin(@PathVariable int id, @RequestBody AdminDTO admin) {
+        AdminDTO updatedAdmin = adminService.updateAdmin(id, admin);
         return ResponseEntity.ok(updatedAdmin);
     }
 

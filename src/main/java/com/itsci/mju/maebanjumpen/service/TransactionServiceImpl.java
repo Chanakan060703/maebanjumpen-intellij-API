@@ -1,38 +1,34 @@
 package com.itsci.mju.maebanjumpen.service;
 
-import com.itsci.mju.maebanjumpen.model.Hire;
-import com.itsci.mju.maebanjumpen.model.Hirer;
-import com.itsci.mju.maebanjumpen.model.Housekeeper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.itsci.mju.maebanjumpen.dto.TransactionDTO;
+import com.itsci.mju.maebanjumpen.mapper.TransactionMapper;
 import com.itsci.mju.maebanjumpen.model.Member;
 import com.itsci.mju.maebanjumpen.model.Transaction;
 import com.itsci.mju.maebanjumpen.repository.MemberRepository;
 import com.itsci.mju.maebanjumpen.repository.TransactionRepository;
+import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final MemberRepository memberRepository;
-
-    @Autowired
-    public TransactionServiceImpl(TransactionRepository transactionRepository, MemberRepository memberRepository) {
-        this.transactionRepository = transactionRepository;
-        this.memberRepository = memberRepository;
-    }
+    private final TransactionMapper transactionMapper;
 
     private void initializeTransactionMemberAndRelated(Transaction transaction) {
         if (transaction != null && transaction.getMember() != null) {
-            // Ensure member is initialized before accessing its properties
             Hibernate.initialize(transaction.getMember());
             Member member = transaction.getMember();
 
@@ -42,83 +38,77 @@ public class TransactionServiceImpl implements TransactionService {
                     Hibernate.initialize(member.getPerson().getLogin());
                 }
             }
-
-            // You might need to explicitly initialize collections if they are LAZY
-            // and you expect them to be serialized for the Transaction response.
-            // For example, member.getTransactions() or hirer.getHires().
-            // However, for this Transaction service, often only basic member info is needed.
-            // If you encounter LazyInitializationException during serialization of the returned Transaction,
-            // you might need to add more Hibernate.initialize calls here based on your TransactionSerializer.
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Transaction> getAllTransactions() {
+    public List<TransactionDTO> getAllTransactions() {
         List<Transaction> transactions = transactionRepository.findAll();
         for (Transaction transaction : transactions) {
             initializeTransactionMemberAndRelated(transaction);
         }
-        return transactions;
+        return transactionMapper.toDtoList(transactions);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Transaction> getTransactionById(int id) {
-        // Using @EntityGraph in TransactionRepository's findById should handle member initialization.
-        // But adding initializeTransactionMemberAndRelated as a fallback/consistency.
+    public Optional<TransactionDTO> getTransactionById(int id) {
         Optional<Transaction> transactionOptional = transactionRepository.findById(id);
+
         transactionOptional.ifPresent(this::initializeTransactionMemberAndRelated);
-        return transactionOptional;
+
+        return transactionOptional.map(transactionMapper::toDto);
     }
 
     @Override
     @Transactional
-    public Transaction saveTransaction(Transaction transaction) {
-        // --- 1. Validate and fetch Member ---
-        if (transaction.getMember() == null || transaction.getMember().getId() == null) {
-            throw new IllegalArgumentException("Member ID จำเป็นสำหรับการสร้างหรืออัปเดตธุรกรรม.");
+    public TransactionDTO saveTransaction(TransactionDTO transactionDto) {
+
+        // 1. Validate and fetch Member ID from DTO
+        if (transactionDto.getMemberId() == null) {
+            throw new IllegalArgumentException("Member ID is required for transaction. Please provide memberId.");
         }
 
-        // Fetch the managed Member entity from the database
-        // This is crucial. Don't rely on the detached 'member' object from the request for further operations.
-        Member existingMember = memberRepository.findById(transaction.getMember().getId())
-                .orElseThrow(() -> new RuntimeException("ไม่พบสมาชิกด้วย ID: " + transaction.getMember().getId()));
-        transaction.setMember(existingMember); // Attach the managed entity to the transaction
+        // 2. Fetch the managed Member entity
+        Member existingMember = memberRepository.findById(transactionDto.getMemberId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found with ID: " + transactionDto.getMemberId()));
 
-        // --- 2. Set Transaction Date if null ---
+        // 3. Convert DTO to Entity and attach managed Member
+        Transaction transaction = transactionMapper.toEntity(transactionDto);
+        transaction.setMember(existingMember);
+
+        // 4. Set Transaction Date if null
         if (transaction.getTransactionDate() == null) {
             transaction.setTransactionDate(LocalDateTime.now());
         }
 
-        // --- 3. Determine oldStatus for update scenarios ---
+        // 5. Determine oldStatus for update scenarios
         String oldStatus = null;
-        if (transaction.getTransactionId() != null) { // Only for existing transactions
+        if (transaction.getTransactionId() != null) {
             Optional<Transaction> existingOpt = transactionRepository.findById(transaction.getTransactionId());
             if (existingOpt.isPresent()) {
                 oldStatus = existingOpt.get().getTransactionStatus();
             }
         }
 
-        // --- 4. Set Initial Transaction Status ---
-        if (("Deposit".equalsIgnoreCase(transaction.getTransactionType()) || "เติมเงิน".equalsIgnoreCase(transaction.getTransactionType())) &&
-                (transaction.getTransactionStatus() == null || transaction.getTransactionStatus().isEmpty())) {
-            transaction.setTransactionStatus("Pending Payment");
-        } else if (("Withdrawal".equalsIgnoreCase(transaction.getTransactionType()) || "ถอนเงิน".equalsIgnoreCase(transaction.getTransactionType())) &&
-                (transaction.getTransactionStatus() == null || transaction.getTransactionStatus().isEmpty())) {
-            transaction.setTransactionStatus("Pending Approve");
-        } else if (transaction.getTransactionStatus() == null || transaction.getTransactionStatus().isEmpty()) {
-            transaction.setTransactionStatus("Pending");
+        // 6. Set Initial Transaction Status (ใช้ภาษาอังกฤษเป็นหลัก)
+        if (transaction.getTransactionStatus() == null || transaction.getTransactionStatus().isEmpty()) {
+            if ("Deposit".equalsIgnoreCase(transaction.getTransactionType())) {
+                transaction.setTransactionStatus("Pending Payment");
+            } else if ("Withdrawal".equalsIgnoreCase(transaction.getTransactionType())) {
+                transaction.setTransactionStatus("Pending Approve");
+            } else {
+                transaction.setTransactionStatus("Pending");
+            }
         }
 
-        // --- 5. Set Transaction Approval Date ---
-        String currentTransactionStatus = transaction.getTransactionStatus(); // Use the status just set
+        // 7. Set Transaction Approval Date (ใช้ภาษาอังกฤษเป็นหลัก)
+        String currentTransactionStatus = transaction.getTransactionStatus();
         if ("Approved".equalsIgnoreCase(currentTransactionStatus) ||
                 "Rejected".equalsIgnoreCase(currentTransactionStatus) ||
                 "Completed".equalsIgnoreCase(currentTransactionStatus) ||
-                "อนุมัติแล้ว".equalsIgnoreCase(currentTransactionStatus) ||
-                "ถูกปฏิเสธ".equalsIgnoreCase(currentTransactionStatus) ||
-                "เสร็จสิ้น".equalsIgnoreCase(currentTransactionStatus)) {
+                "SUCCESS".equalsIgnoreCase(currentTransactionStatus)) {
             if (transaction.getTransactionApprovalDate() == null) {
                 transaction.setTransactionApprovalDate(LocalDateTime.now());
             }
@@ -126,68 +116,63 @@ public class TransactionServiceImpl implements TransactionService {
             transaction.setTransactionApprovalDate(null);
         }
 
-        // --- 6. Save the Transaction ---
+        // 8. Save the Transaction
         Transaction savedTransaction = transactionRepository.save(transaction);
+        String savedStatusEnglish = savedTransaction.getTransactionStatus().toUpperCase();
 
-        // --- 7. Logic for adjusting Member balance (if status changed to Approved for the first time) ---
-        // We use the 'savedTransaction' as it's now managed by JPA/Hibernate and has its ID.
-        // Check if the status is now Approved and it wasn't Approved before this save/update.
-        if (("Approved".equalsIgnoreCase(savedTransaction.getTransactionStatus()) || "อนุมัติแล้ว".equalsIgnoreCase(savedTransaction.getTransactionStatus())) &&
-                !(oldStatus != null && ("Approved".equalsIgnoreCase(oldStatus) || "อนุมัติแล้ว".equalsIgnoreCase(oldStatus)))) {
+        // 9. Logic for adjusting Member balance (Run only if status is Approved/SUCCESS and wasn't before)
+        if ((savedStatusEnglish.equals("APPROVED") || savedStatusEnglish.equals("SUCCESS")) &&
+                !(oldStatus != null && (oldStatus.toUpperCase().equals("APPROVED") || oldStatus.toUpperCase().equals("SUCCESS")))) {
 
-            Member memberToUpdate = savedTransaction.getMember(); // This 'memberToUpdate' is the already fetched and managed 'existingMember'
-            if (memberToUpdate != null) { // Should not be null due to previous checks
+            Member memberToUpdate = savedTransaction.getMember();
+            if (memberToUpdate != null) {
                 Double currentBalance = memberToUpdate.getBalance();
                 Double transactionAmount = savedTransaction.getTransactionAmount();
 
-                if ("Withdrawal".equalsIgnoreCase(savedTransaction.getTransactionType()) || "ถอนเงิน".equalsIgnoreCase(savedTransaction.getTransactionType())) {
-                    // --- Handle Withdrawal ---
-                    if (currentBalance != null && currentBalance >= transactionAmount) { // Added null check for currentBalance
+                if ("Withdrawal".equalsIgnoreCase(savedTransaction.getTransactionType())) {
+                    if (currentBalance != null && currentBalance >= transactionAmount) {
                         memberToUpdate.setBalance(currentBalance - transactionAmount);
-                        memberRepository.save(memberToUpdate); // Persist updated balance
+                        memberRepository.save(memberToUpdate);
                     } else {
                         // Insufficient funds: Mark transaction as Failed and throw an exception to rollback
                         savedTransaction.setTransactionStatus("Failed");
                         savedTransaction.setTransactionApprovalDate(LocalDateTime.now());
-                        transactionRepository.save(savedTransaction); // Save the failed status
-                        throw new RuntimeException("ยอดเงินคงเหลือของสมาชิก " + memberToUpdate.getId() + " ไม่พอสำหรับการถอน (" + currentBalance + " < " + transactionAmount + ")");
+                        transactionRepository.save(savedTransaction);
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds for withdrawal (" + (currentBalance != null ? currentBalance : 0.0) + " < " + transactionAmount + ")");
                     }
-                } else if ("Deposit".equalsIgnoreCase(savedTransaction.getTransactionType()) || "เติมเงิน".equalsIgnoreCase(savedTransaction.getTransactionType())) {
-                    // --- Handle Deposit ---
-                    memberToUpdate.setBalance((currentBalance != null ? currentBalance : 0.0) + transactionAmount); // Handle null currentBalance
-                    memberRepository.save(memberToUpdate); // Persist updated balance
+                } else if ("Deposit".equalsIgnoreCase(savedTransaction.getTransactionType())) {
+                    memberToUpdate.setBalance((currentBalance != null ? currentBalance : 0.0) + transactionAmount);
+                    memberRepository.save(memberToUpdate);
                 }
-                // Add more conditions for other Transaction Types (e.g., service fees, penalties)
             }
         }
 
-        // Initialize related entities for the returned object to prevent LazyInitializationException during serialization
         initializeTransactionMemberAndRelated(savedTransaction);
-        return savedTransaction;
+        return transactionMapper.toDto(savedTransaction);
     }
 
     @Override
     @Transactional
     public void deleteTransaction(int id) {
         if (!transactionRepository.existsById(id)) {
-            throw new RuntimeException("ไม่พบธุรกรรมด้วย ID: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found with ID: " + id);
         }
         transactionRepository.deleteById(id);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Transaction> getTransactionsByMemberId(int memberId) {
+    public List<TransactionDTO> getTransactionsByMemberId(int memberId) {
         List<Transaction> transactions = transactionRepository.findByMemberId(memberId);
         for (Transaction transaction : transactions) {
             initializeTransactionMemberAndRelated(transaction);
         }
-        return transactions;
+        return transactionMapper.toDtoList(transactions);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Transaction> getWithdrawalRequests() {
+    public List<TransactionDTO> getWithdrawalRequests() {
         List<Transaction> withdrawalTransactions = transactionRepository
                 .findByTransactionTypeOrTransactionType("Withdrawal", "ถอนเงิน");
 
@@ -195,6 +180,7 @@ public class TransactionServiceImpl implements TransactionService {
             initializeTransactionMemberAndRelated(transaction);
         }
 
+        // Sorting logic (Pending first, then by date desc)
         withdrawalTransactions.sort((a, b) -> {
             String statusA = (a.getTransactionStatus() != null) ? a.getTransactionStatus().toLowerCase() : "";
             String statusB = (b.getTransactionStatus() != null) ? b.getTransactionStatus().toLowerCase() : "";
@@ -214,61 +200,115 @@ public class TransactionServiceImpl implements TransactionService {
             return dateB.compareTo(dateA);
         });
 
-        return withdrawalTransactions;
+        return transactionMapper.toDtoList(withdrawalTransactions);
     }
+
 
     @Override
     @Transactional
-    public Optional<Transaction> updateWithdrawalRequestStatus(Integer transactionId, String newStatus) {
+    public Optional<TransactionDTO> updateWithdrawalRequestStatus(Integer transactionId, String newStatus) {
         return transactionRepository.findById(transactionId).map(existingTransaction -> {
-            String oldStatus = existingTransaction.getTransactionStatus(); // เก็บสถานะเดิม
+            String oldStatus = existingTransaction.getTransactionStatus();
 
             existingTransaction.setTransactionStatus(newStatus);
 
             if ("Approved".equalsIgnoreCase(newStatus) || "Rejected".equalsIgnoreCase(newStatus) ||
-                    "อนุมัติแล้ว".equalsIgnoreCase(newStatus) || "ถูกปฏิเสธ".equalsIgnoreCase(newStatus) ||
-                    "Completed".equalsIgnoreCase(newStatus) || "เสร็จสิ้น".equalsIgnoreCase(newStatus)) {
+                    "Completed".equalsIgnoreCase(newStatus) || "SUCCESS".equalsIgnoreCase(newStatus)) {
                 existingTransaction.setTransactionApprovalDate(LocalDateTime.now());
             } else {
                 existingTransaction.setTransactionApprovalDate(null);
             }
 
             Transaction savedTransaction = transactionRepository.save(existingTransaction);
+            String savedStatusEnglish = savedTransaction.getTransactionStatus().toUpperCase();
 
-            // --- Logic สำหรับหัก/เพิ่มเงินเมื่อสถานะเปลี่ยนเป็น Approved ---
-            // ตรวจสอบว่าสถานะเปลี่ยนเป็น Approved และไม่ใช่สถานะเดิม
-            if (("Approved".equalsIgnoreCase(savedTransaction.getTransactionStatus()) || "อนุมัติแล้ว".equalsIgnoreCase(savedTransaction.getTransactionStatus())) &&
-                    !(oldStatus != null && ("Approved".equalsIgnoreCase(oldStatus) || "อนุมัติแล้ว".equalsIgnoreCase(oldStatus)))) {
+            // Logic for adjusting Member balance
+            if ((savedStatusEnglish.equals("APPROVED") || savedStatusEnglish.equals("SUCCESS")) &&
+                    !(oldStatus != null && (oldStatus.toUpperCase().equals("APPROVED") || oldStatus.toUpperCase().equals("SUCCESS")))) {
 
-                Member memberToUpdate = savedTransaction.getMember(); // This is the managed entity
+                Member memberToUpdate = savedTransaction.getMember();
                 if (memberToUpdate != null) {
                     Double currentBalance = memberToUpdate.getBalance();
                     Double transactionAmount = savedTransaction.getTransactionAmount();
 
-                    if ("Withdrawal".equalsIgnoreCase(savedTransaction.getTransactionType()) || "ถอนเงิน".equalsIgnoreCase(savedTransaction.getTransactionType())) {
-                        // หักเงินสำหรับ Withdrawal
-                        if (currentBalance != null && currentBalance >= transactionAmount) { // Added null check for currentBalance
+                    if ("Withdrawal".equalsIgnoreCase(savedTransaction.getTransactionType())) {
+                        if (currentBalance != null && currentBalance >= transactionAmount) {
                             memberToUpdate.setBalance(currentBalance - transactionAmount);
-                            memberRepository.save(memberToUpdate); // บันทึก Member ที่อัปเดต balance
+                            memberRepository.save(memberToUpdate);
                         } else {
-                            // กรณีเงินไม่พอ: เปลี่ยนสถานะธุรกรรมเป็น "Failed" และ throw Exception เพื่อ rollback
+                            // Insufficient funds
                             savedTransaction.setTransactionStatus("Failed");
                             savedTransaction.setTransactionApprovalDate(LocalDateTime.now());
-                            transactionRepository.save(savedTransaction); // Save the failed status
-                            throw new RuntimeException("ยอดเงินคงเหลือของสมาชิก " + memberToUpdate.getId() + " ไม่พอสำหรับการถอน (" + (currentBalance != null ? currentBalance : 0.0) + " < " + transactionAmount + ")");
+                            transactionRepository.save(savedTransaction);
+                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds for withdrawal (" + (currentBalance != null ? currentBalance : 0.0) + " < " + transactionAmount + ")");
                         }
-                    } else if ("Deposit".equalsIgnoreCase(savedTransaction.getTransactionType()) || "เติมเงิน".equalsIgnoreCase(savedTransaction.getTransactionType())) {
-                        // เพิ่มเงินสำหรับ Deposit
-                        memberToUpdate.setBalance((currentBalance != null ? currentBalance : 0.0) + transactionAmount); // Handle null currentBalance
-                        memberRepository.save(memberToUpdate); // บันทึก Member ที่อัปเดต balance
+                    } else if ("Deposit".equalsIgnoreCase(savedTransaction.getTransactionType())) {
+                        memberToUpdate.setBalance((currentBalance != null ? currentBalance : 0.0) + transactionAmount);
+                        memberRepository.save(memberToUpdate);
                     }
                 }
             }
-            // Initialize related entities for the returned object
             initializeTransactionMemberAndRelated(savedTransaction);
-            return savedTransaction;
+            return transactionMapper.toDto(savedTransaction);
         });
     }
+
+    @Override
+    @Transactional
+    public void processOmiseChargeComplete(JsonNode root) throws Exception {
+        String chargeStatus = root.path("data").path("status").asText();
+        boolean paid = root.path("data").path("paid").asBoolean();
+        double amountInSatang = root.path("data").path("amount").asDouble();
+        String ourTransactionId = root.path("data").path("metadata").path("transaction_id").asText();
+
+        if (ourTransactionId == null || ourTransactionId.isEmpty()) {
+            throw new IllegalArgumentException("Metadata 'transaction_id' is missing from Omise payload.");
+        }
+
+        Optional<Transaction> optionalTransaction = transactionRepository.findById(Integer.parseInt(ourTransactionId));
+
+        if (optionalTransaction.isPresent()) {
+            Transaction transaction = optionalTransaction.get();
+            String oldStatus = transaction.getTransactionStatus(); // เก็บสถานะเดิม
+
+            if ("successful".equals(chargeStatus) && paid) {
+                transaction.setTransactionStatus("SUCCESS");
+                transaction.setTransactionApprovalDate(LocalDateTime.now());
+
+                Member member = transaction.getMember();
+                if (member != null) {
+                    // Logic: อัปเดตยอดเงินเฉพาะถ้าสถานะเดิมไม่ใช่ SUCCESS/Approved (Idempotency)
+                    if (!("SUCCESS".equalsIgnoreCase(oldStatus) || "APPROVED".equalsIgnoreCase(oldStatus))) {
+                        double amountInBaht = amountInSatang / 100.0;
+                        double currentMemberBalance = member.getBalance() != null ? member.getBalance() : 0.0;
+                        member.setBalance(currentMemberBalance + amountInBaht);
+                        memberRepository.save(member);
+                        System.out.println("Member ID: " + member.getId() + " balance updated to: " + member.getBalance());
+                    } else {
+                        System.out.println("Transaction ID: " + ourTransactionId + " already processed/approved. Skipping balance update.");
+                    }
+                } else {
+                    System.err.println("Error: Member not found for transaction ID: " + ourTransactionId);
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Member associated with transaction not found.");
+                }
+
+            } else if ("failed".equals(chargeStatus)) {
+                transaction.setTransactionStatus("FAILED");
+                System.out.println("Transaction ID: " + ourTransactionId + " failed.");
+            } else {
+                // สำหรับสถานะอื่นๆ ที่ Omise อาจส่งมา
+                transaction.setTransactionStatus(chargeStatus.toUpperCase());
+                System.out.println("Transaction ID: " + ourTransactionId + " status: " + chargeStatus);
+            }
+
+            transactionRepository.save(transaction);
+
+        } else {
+            System.err.println("Transaction with ID " + ourTransactionId + " not found in our system.");
+            // ไม่ Throw Exception 404 เพื่อให้ Webhook คืน 200 OK
+        }
+    }
+
 
     @Override
     public String getLocalizedStatus(String status, boolean isEnglish) {
@@ -278,19 +318,23 @@ public class TransactionServiceImpl implements TransactionService {
         if (isEnglish) {
             return status;
         } else {
-            switch (status.toLowerCase()) {
-                case "pending approve":
+            switch (status.toUpperCase()) {
+                case "PENDING APPROVE":
+                case "PENDING":
                     return "กำลังรอตรวจสอบ";
-                case "pending payment":
+                case "PENDING PAYMENT":
+                case "QR GENERATED": // เพิ่มสถานะนี้
                     return "รอชำระเงิน";
-                case "approved":
+                case "APPROVED":
                     return "อนุมัติแล้ว";
-                case "rejected":
+                case "REJECTED":
                     return "ถูกปฏิเสธ";
-                case "completed":
+                case "COMPLETED":
                     return "เสร็จสิ้น";
-                case "failed":
+                case "FAILED":
                     return "ล้มเหลว";
+                case "SUCCESS":
+                    return "สำเร็จ";
                 default:
                     return "ไม่ทราบสถานะ";
             }
@@ -301,21 +345,17 @@ public class TransactionServiceImpl implements TransactionService {
     public String getStatusColorHex(String status) {
         if (status == null) return "#808080";
 
-        switch (status.toLowerCase()) {
-            case "pending approve":
-            case "กำลังรอตรวจสอบ":
-            case "pending payment":
-            case "รอชำระเงิน":
+        switch (status.toUpperCase()) {
+            case "PENDING APPROVE":
+            case "PENDING PAYMENT":
+            case "QR GENERATED": // เพิ่มสถานะนี้
                 return "#FFA500";
-            case "approved":
-            case "อนุมัติแล้ว":
-            case "completed":
-            case "เสร็จสิ้น":
+            case "APPROVED":
+            case "COMPLETED":
+            case "SUCCESS":
                 return "#008000";
-            case "rejected":
-            case "ถูกปฏิเสd":
-            case "failed":
-            case "ล้มเหลว":
+            case "REJECTED":
+            case "FAILED":
                 return "#FF0000";
             default:
                 return "#808080";

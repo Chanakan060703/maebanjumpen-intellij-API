@@ -15,21 +15,29 @@ import lombok.ToString;
 @Data
 @JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
 public class HousekeeperSkill {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer skillId;
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Integer skillId;
 
-    @Column(name="skillLevel", nullable = false)
-    private String skillLevel;
+        @ManyToOne(fetch = FetchType.EAGER)
+        @JoinColumn(name = "skill_level_tier_id", nullable = false)
+        @ToString.Exclude
+        private SkillLevelTier skillLevelTier;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "housekeeper_id", nullable = false)
-    @JsonBackReference("housekeeper-skills") // Correctly uses JsonBackReference
-    @ToString.Exclude
-    private Housekeeper housekeeper;
+        @ManyToOne(fetch = FetchType.LAZY)
+        @JoinColumn(name = "housekeeper_id", nullable = false)
+        @JsonBackReference("housekeeper-skills")
+        @ToString.Exclude
+        private Housekeeper housekeeper;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "skill_type_id", nullable = false)
-    @ToString.Exclude
-    private SkillType skillType; // Assuming SkillType is a valid Entity
+        @ManyToOne(fetch = FetchType.EAGER)
+        @JoinColumn(name = "skill_type_id", nullable = false)
+        @ToString.Exclude
+        private SkillType skillType;
+
+        @Column(name = "price_per_day")
+        private Double pricePerDay;
+
+        @Column(name = "total_hires_completed", nullable = false)
+        private Integer totalHiresCompleted = 0;
 }

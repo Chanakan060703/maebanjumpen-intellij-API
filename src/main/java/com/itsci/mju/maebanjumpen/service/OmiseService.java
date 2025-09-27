@@ -13,7 +13,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import com.itsci.mju.maebanjumpen.config.OmiseAPIConfig; // **เพิ่ม import นี้**
+import com.itsci.mju.maebanjumpen.config.OmiseAPIConfig;
 
 @Service
 public class OmiseService {

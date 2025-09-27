@@ -1,5 +1,6 @@
 package com.itsci.mju.maebanjumpen.controller;
 
+import com.itsci.mju.maebanjumpen.dto.MemberDTO;
 import com.itsci.mju.maebanjumpen.model.Member;
 import com.itsci.mju.maebanjumpen.service.MemberService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,25 +24,25 @@ public class MemberController {
 
 
     @GetMapping
-    public ResponseEntity<List<Member>> getAllMembers() {
-        List<Member> members = memberService.getAllMembers();
+    public ResponseEntity<List<MemberDTO>> getAllMembers() {
+        List<MemberDTO> members = memberService.getAllMembers();
         return ResponseEntity.ok(members); // 200 OK
     }
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<Member> getMemberById(@PathVariable int id) {
+    public ResponseEntity<MemberDTO> getMemberById(@PathVariable int id) {
         // ใช้ Optional ที่มาจาก Service เพื่อจัดการกรณีไม่พบข้อมูล
-        Optional<Member> member = memberService.getMemberById(id);
+        Optional<MemberDTO> member = memberService.getMemberById(id);
         return member.map(ResponseEntity::ok) // ถ้ามีข้อมูล, คืน 200 OK พร้อม Member
                 .orElseGet(() -> ResponseEntity.notFound().build()); // ถ้าไม่พบ, คืน 404 Not Found
     }
 
 
     @PostMapping
-    public ResponseEntity<Member> createMember(@RequestBody Member member) {
+    public ResponseEntity<MemberDTO> createMember(@RequestBody MemberDTO member) {
         try {
-            Member savedMember = memberService.saveMember(member);
+            MemberDTO savedMember = memberService.saveMember(member);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedMember); // 201 Created
         } catch (IllegalArgumentException e) {
             // ดักจับข้อผิดพลาดจากการตรวจสอบข้อมูลที่ไม่ถูกต้อง เช่น Member ID ซ้ำ (ถ้ามี logic ที่ Service)
@@ -54,9 +55,9 @@ public class MemberController {
 
 
     @PutMapping("/{id}")
-    public ResponseEntity<Member> updateMember(@PathVariable int id, @RequestBody Member memberDetails) {
+    public ResponseEntity<MemberDTO> updateMember(@PathVariable int id, @RequestBody MemberDTO memberDetails) {
         try {
-            Member updatedMember = memberService.updateMember(id, memberDetails);
+            MemberDTO updatedMember = memberService.updateMember(id, memberDetails);
             return ResponseEntity.ok(updatedMember); // 200 OK
         } catch (RuntimeException e) { // ดัก RuntimeException ที่โยนมาจาก Service (เช่น "ไม่พบสมาชิก")
             return ResponseEntity.notFound().build(); // 404 Not Found

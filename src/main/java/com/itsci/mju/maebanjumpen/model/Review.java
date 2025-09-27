@@ -1,15 +1,10 @@
 package com.itsci.mju.maebanjumpen.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference; // This import might not be needed
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.itsci.mju.maebanjumpen.serializer.ReviewSerializer; // Make sure this serializer exists
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.EqualsAndHashCode.Exclude;
-import lombok.EqualsAndHashCode.Include;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,7 +15,6 @@ import java.time.LocalDateTime;
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "reviewId")
-@JsonSerialize(using = ReviewSerializer.class)
 @NamedEntityGraph(
         name = "review-with-hire-details",
         attributeNodes = {
@@ -59,7 +53,7 @@ public class Review {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Include
+    @ToString.Include
     private Integer reviewId;
 
     @Column(name = "review_message")
@@ -72,10 +66,8 @@ public class Review {
     private LocalDateTime reviewDate;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hire_id")
+    @JoinColumn(name = "hire_id", nullable = false, unique = true)
     @ToString.Exclude
     @Exclude
-    // If you use @JsonIdentityInfo, you generally don't need @JsonBackReference
-    // @JsonBackReference("hire-review")
     private Hire hire;
 }

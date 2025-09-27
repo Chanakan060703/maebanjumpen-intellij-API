@@ -17,6 +17,4 @@ public class Login {
 	@Include
 	private String username;
 	private String password;
-
-
 }

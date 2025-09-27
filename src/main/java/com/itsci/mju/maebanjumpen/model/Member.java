@@ -2,18 +2,18 @@ package com.itsci.mju.maebanjumpen.model;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.itsci.mju.maebanjumpen.serializer.MemberSerializer;
 import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Entity
-@JsonSerialize(using = MemberSerializer.class)
-//@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+@Data // ⬅️ เพิ่ม @Data เพื่อลด boilerplate code
+@EqualsAndHashCode(callSuper = true) // ⬅️ เพิ่ม EqualsAndHashCode
 @JsonIdentityInfo(generator = ObjectIdGenerators.None.class)
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
@@ -23,50 +23,20 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = Hirer.class, name = "hirer"),
         @JsonSubTypes.Type(value = Housekeeper.class, name = "housekeeper"),
-        // *** แก้ไขตรงนี้: เปลี่ยน Member.class เป็น Hirer.class ***
-        // ถ้า "type" เป็น "member" ใน JSON ให้สร้างเป็น Hirer class
-        // เพราะ Member เป็น abstract คุณต้องระบุ class ที่เป็น concrete
-        @JsonSubTypes.Type(value = Hirer.class, name = "member") // <<< เปลี่ยนตรงนี้!
+        @JsonSubTypes.Type(value = Hirer.class, name = "member") // ⚠️ ค่านี้อาจผิดถ้า Hirer เป็น Member
 })
-public abstract class Member extends PartyRole {
+// ⬇️ ลบคำสั่ง 'abstract' ออก
+public class Member extends PartyRole {
 
-    @Column(name = "balance")
-    private Double balance = 0.0;
+        @Column(name = "balance")
+        private Double balance = 0.0;
 
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Set<Transaction> transactions = new HashSet<>();
+        @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+        @EqualsAndHashCode.Exclude // ไม่รวมความสัมพันธ์แบบ OneToMany ใน hashCode/equals เพื่อประสิทธิภาพ
+        private Set<Transaction> transactions = new HashSet<>();
 
-    public Member() {
-        super();
-    }
+        // ⚠️ ลบ Constructor ที่ว่างเปล่าออกถ้าใช้ @Data/@NoArgsConstructor
+        // public Member() { super(); }
 
-    public Double getBalance() {
-        return balance;
-    }
-
-    public void setBalance(Double balance) {
-        this.balance = balance;
-    }
-
-    public Set<Transaction> getTransactions() {
-        return transactions;
-    }
-
-    public void setTransactions(Set<Transaction> transactions) {
-        this.transactions = transactions;
-    }
-
-    public void addTransaction(Transaction transaction) {
-        if (transaction != null) {
-            transactions.add(transaction);
-            transaction.setMember(this);
-        }
-    }
-
-    public void removeTransaction(Transaction transaction) {
-        if (transaction != null) {
-            transactions.remove(transaction);
-            transaction.setMember(null);
-        }
-    }
+        // ⚠️ Getters/Setters ถูกจัดการโดย @Data
 }

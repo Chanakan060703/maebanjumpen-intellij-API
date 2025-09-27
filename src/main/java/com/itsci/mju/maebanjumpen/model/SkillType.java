@@ -16,8 +16,13 @@ public class SkillType {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer skillTypeId;
+
     @Column(name="skill_type_name", nullable = false)
     private String skillTypeName;
+
     @Column(name="skill_type_detail", nullable = false)
     private String skillTypeDetail;
+
+    @Column(name="base_price_per_hour", nullable = false) // <-- เพิ่ม field นี้
+    private Double basePricePerHour; // ราคาเริ่มต้นต่อชั่วโมงของบริการนี้
 }

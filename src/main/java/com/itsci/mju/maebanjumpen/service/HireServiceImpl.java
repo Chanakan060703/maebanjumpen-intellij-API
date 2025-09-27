@@ -1,158 +1,192 @@
 package com.itsci.mju.maebanjumpen.service;
 
+import com.itsci.mju.maebanjumpen.dto.HireDTO;
 import com.itsci.mju.maebanjumpen.exception.HirerNotFoundException;
 import com.itsci.mju.maebanjumpen.exception.HousekeeperNotFoundException;
 import com.itsci.mju.maebanjumpen.exception.InsufficientBalanceException;
+import com.itsci.mju.maebanjumpen.mapper.HireMapper;
 import com.itsci.mju.maebanjumpen.model.Hire;
-import com.itsci.mju.maebanjumpen.repository.HireRepository;
 import com.itsci.mju.maebanjumpen.model.Hirer;
 import com.itsci.mju.maebanjumpen.model.Housekeeper;
+import com.itsci.mju.maebanjumpen.model.HousekeeperSkill;
+import com.itsci.mju.maebanjumpen.model.SkillType;
+import com.itsci.mju.maebanjumpen.repository.HireRepository;
 import com.itsci.mju.maebanjumpen.repository.HirerRepository;
 import com.itsci.mju.maebanjumpen.repository.HousekeeperRepository;
-
-
-import org.springframework.beans.factory.annotation.Autowired;
+import com.itsci.mju.maebanjumpen.repository.SkillTypeRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.hibernate.Hibernate; // ** เพิ่ม import นี้ **
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-
-
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class HireServiceImpl implements HireService {
 
-    @Autowired
-    private HireRepository hireRepository;
+    private final HireMapper hireMapper;
+    private final HireRepository hireRepository;
+    private final HirerService hirerService;
+    private final HousekeeperService housekeeperService;
+    private final HousekeeperSkillService housekeeperSkillService;
+    // private final SkillTypeMapper skillTypeMapper; // ⬅️ ไม่ได้ใช้ ถูกลบ
+    private final SkillTypeRepository skillTypeRepository;
+    private final HirerRepository hirerRepository;
+    private final HousekeeperRepository housekeeperRepository;
 
-    @Autowired
-    private HirerService hirerService;
-    @Autowired
-    private HousekeeperService housekeeperService;
-
-    @Autowired
-    private HirerRepository hirerRepository;
-    @Autowired
-    private HousekeeperRepository housekeeperRepository;
-
+    // ⚠️ ไม่ต้องประกาศ HirerMapper, HousekeeperMapper ที่นี่ เพราะ HireMapper จัดการ Nested DTOs เอง
 
     @Override
     @Transactional(readOnly = true)
-    public List<Hire> getAllHires() {
-        return hireRepository.findAllWithDetails();
+    public List<HireDTO> getAllHires() {
+        List<Hire> entities = hireRepository.findAll();
+        return hireMapper.toDtoList(entities); // ⬅️ แก้ไขชื่อเมธอดเป็น toDtoList
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Hire getHireById(Integer id) {
-        return hireRepository.fetchByIdWithAllDetails(id).orElse(null);
+    public HireDTO getHireById(Integer id) {
+        Hire hire = hireRepository.fetchByIdWithAllDetails(id)
+                .orElseThrow(() -> new IllegalArgumentException("Hire with ID " + id + " not found."));
+        return hireMapper.toDto(hire);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Hire> getHiresByHirerId(Integer hirerId) {
-        return hireRepository.findByHirerIdWithDetails(hirerId);
+    public List<HireDTO> getHiresByHirerId(Integer hirerId) {
+        List<Hire> hires = hireRepository.findByHirerIdWithDetails(hirerId);
+        return hireMapper.toDtoList(hires); // ⬅️ แก้ไขชื่อเมธอดเป็น toDtoList
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Hire> getHiresByHousekeeperId(Integer housekeeperId) {
-        return hireRepository.findByHousekeeperIdWithDetails(housekeeperId);
+    public List<HireDTO> getHiresByHousekeeperId(Integer housekeeperId) {
+        List<Hire> hires = hireRepository.findByHousekeeperIdWithDetails(housekeeperId);
+        return hireMapper.toDtoList(hires); // ⬅️ แก้ไขชื่อเมธอดเป็น toDtoList
+    }
+
+    /**
+     * 💡 NEW SERVICE METHOD: ดึงเฉพาะงานจ้างที่เสร็จสมบูรณ์ ('Completed') สำหรับ Housekeeper ID นั้นๆ
+     * ใช้สำหรับคำนวณ 'Jobs Done' และดึง Reviews
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<HireDTO> getCompletedHiresByHousekeeperId(Integer housekeeperId) {
+        // สถานะที่ใช้ในการค้นหา
+        final String COMPLETED_STATUS = "Completed";
+
+        // 💡 เรียก Repository method ใหม่ที่ดึงรายละเอียด Review และอื่นๆ มาพร้อม
+        List<Hire> completedHires = hireRepository.findByHousekeeperIdAndJobStatusWithDetails(housekeeperId, COMPLETED_STATUS);
+
+        // Map Entity ไป DTO และส่งกลับ
+        return hireMapper.toDtoList(completedHires);
     }
 
     @Override
     @Transactional
-    public Hire saveHire(Hire hire) {
-        if (hire.getHirer() == null || hire.getHirer().getId() == null) {
-            throw new IllegalArgumentException("Hirer ID is required for creating a hire.");
-        }
-        Hirer hirer = hirerRepository.findById(hire.getHirer().getId())
-                .orElseThrow(() -> new HirerNotFoundException("Hirer with ID " + hire.getHirer().getId() + " not found."));
+    public HireDTO saveHire(HireDTO hireDto) {
+        // 1. แปลง DTO เป็น Entity ชั่วคราวเพื่อเข้าถึง ID
+        Hire hire = hireMapper.toEntity(hireDto);
+
+        // 2. ดึง Entity ที่สมบูรณ์จาก ID ใน DTO (ใช้ตรรกะเดิม)
+        Hirer hirer = validateAndGetHirer(hire);
         hire.setHirer(hirer);
 
-        if (hire.getHousekeeper() == null || hire.getHousekeeper().getId() == null) {
-            throw new IllegalArgumentException("Housekeeper ID is required for creating a hire.");
-        }
-        Housekeeper housekeeper = housekeeperRepository.findById(hire.getHousekeeper().getId())
-                .orElseThrow(() -> new HousekeeperNotFoundException("Housekeeper with ID " + hire.getHousekeeper().getId() + " not found."));
+        Housekeeper housekeeper = validateAndGetHousekeeper(hire);
         hire.setHousekeeper(housekeeper);
 
+        SkillType skillType = validateAndGetSkillType(hire);
+        hire.setSkillType(skillType);
 
+        // 3. คำนวณราคารวม
+        // ⚠️ แก้ไข: ต้องใช้ getter ที่ถูกต้องจาก DTO
+        double totalPayment = calculateTotalPayment(housekeeper, skillType, hireDto.getAdditionalSkillTypeIds());
+        hire.setPaymentAmount(totalPayment);
+
+        // 4. ตรวจสอบ balance (ตรรกะเดิม)
+        if (hirer.getBalance() < hire.getPaymentAmount()) {
+            throw new InsufficientBalanceException("Insufficient balance to create a hire.");
+        }
+
+        // 5. ตั้งค่า Hire Name
+        hire.setHireName(skillType.getSkillTypeName());
+
+        // 6. สร้าง Hire Detail ใหม่ (ใช้ตรรกะเดิม)
+        StringBuilder hireDetailBuilder = new StringBuilder();
+        if (hireDto.getHireDetail() != null && !hireDto.getHireDetail().isEmpty()) {
+            hireDetailBuilder.append(hireDto.getHireDetail());
+        }
+
+        if (hireDto.getAdditionalSkillTypeIds() != null && !hireDto.getAdditionalSkillTypeIds().isEmpty()) {
+            String additionalSkillsString = hireDto.getAdditionalSkillTypeIds().stream()
+                    .map(id -> skillTypeRepository.findById(id).map(SkillType::getSkillTypeName).orElse(null))
+                    .filter(name -> name != null)
+                    .collect(Collectors.joining(", "));
+
+            if (!additionalSkillsString.isEmpty()) {
+                if (hireDetailBuilder.length() > 0) {
+                    hireDetailBuilder.append("\n");
+                }
+                hireDetailBuilder.append("Additional Services: ").append(additionalSkillsString);
+            }
+        }
+        hire.setHireDetail(hireDetailBuilder.toString());
+
+        // 7. บันทึกและคืนค่า DTO
         Hire savedHire = hireRepository.save(hire);
-
-
-        return hireRepository.fetchByIdWithAllDetails(savedHire.getHireId()).orElse(savedHire);
+        Hire finalHire = hireRepository.fetchByIdWithAllDetails(savedHire.getHireId()).orElse(savedHire);
+        return hireMapper.toDto(finalHire);
     }
 
     @Override
     @Transactional
-    public Hire updateHire(Integer id, Hire hireDetailsFromClient) throws InsufficientBalanceException, HirerNotFoundException {
-        Optional<Hire> existingHireOptional = hireRepository.fetchByIdWithAllDetails(id);
+    public HireDTO updateHire(Integer id, HireDTO hireDto)
+            throws InsufficientBalanceException, HirerNotFoundException {
+        // ... (โค้ด updateHire ที่เหลือถูกต้องแล้ว) ...
+        Hire existingHire = hireRepository.fetchByIdWithAllDetails(id)
+                .orElseThrow(() -> new IllegalArgumentException("Hire with ID " + id + " not found."));
 
-        if (existingHireOptional.isEmpty()) {
-            return null;
-        }
-
-        Hire existingHire = existingHireOptional.get();
         String oldStatus = existingHire.getJobStatus();
-        String newStatus = hireDetailsFromClient.getJobStatus();
+        String newStatus = hireDto.getJobStatus();
 
-        if ("Completed".equalsIgnoreCase(newStatus) && !"Completed".equalsIgnoreCase(oldStatus)) {
-            if (existingHire.getHirer() == null || existingHire.getHirer().getId() == null) {
-                throw new IllegalStateException("Missing hirer details for hire ID: " + id);
-            }
-            if (existingHire.getHousekeeper() == null || existingHire.getHousekeeper().getId() == null) {
-                throw new IllegalStateException("Missing housekeeper details for hire ID: " + id);
-            }
-            if (existingHire.getPaymentAmount() == null) {
-                throw new IllegalStateException("Missing payment amount for hire ID: " + id);
-            }
+        if (newStatus != null && "Completed".equalsIgnoreCase(newStatus)
+                && !"Completed".equalsIgnoreCase(oldStatus)) {
+            // ดำเนินการหัก/เพิ่มยอดคงเหลือ และอัปเดตระดับทักษะ
+            hirerService.deductBalance(existingHire.getHirer().getId(), existingHire.getPaymentAmount());
+            housekeeperService.addBalance(existingHire.getHousekeeper().getId(), existingHire.getPaymentAmount());
 
-            try {
-                System.out.println("Attempting to deduct " + existingHire.getPaymentAmount() + " from Hirer ID: " + existingHire.getHirer().getId());
-                hirerService.deductBalance(existingHire.getHirer().getId(), existingHire.getPaymentAmount());
-                System.out.println("Deducted successfully from Hirer ID: " + existingHire.getHirer().getId());
-
-                System.out.println("Attempting to add " + existingHire.getPaymentAmount() + " to Housekeeper ID: " + existingHire.getHousekeeper().getId());
-                housekeeperService.addBalance(existingHire.getHousekeeper().getId(), existingHire.getPaymentAmount());
-                System.out.println("Added successfully to Housekeeper ID: " + existingHire.getHousekeeper().getId());
-
-            } catch (InsufficientBalanceException e) {
-                System.err.println("Transaction failed: Insufficient balance for hirer " + existingHire.getHirer().getId() + " on hire " + id + ": " + e.getMessage());
-                throw e;
-            } catch (HirerNotFoundException e) {
-                System.err.println("Transaction failed: Hirer " + existingHire.getHirer().getId() + " not found on hire " + id + ": " + e.getMessage());
-                throw e;
-            } catch (HousekeeperNotFoundException e) {
-                System.err.println("Transaction failed: Housekeeper " + existingHire.getHousekeeper().getId() + " not found on hire " + id + ": " + e.getMessage());
-                throw e;
-            }
-        }
-        else if ("Cancelled".equalsIgnoreCase(newStatus) && !"Cancelled".equalsIgnoreCase(oldStatus)) {
-            System.out.println("Job " + id + " status changed to Cancelled. Implement refund logic if applicable.");
+            housekeeperSkillService.updateSkillLevelAndHiresCompleted(
+                    existingHire.getHousekeeper().getId(),
+                    existingHire.getSkillType().getSkillTypeId()
+            );
         }
 
-        existingHire.setJobStatus(newStatus);
-        existingHire.setHireName(hireDetailsFromClient.getHireName());
-        existingHire.setHireDetail(hireDetailsFromClient.getHireDetail());
-        existingHire.setPaymentAmount(hireDetailsFromClient.getPaymentAmount());
-        existingHire.setHireDate(hireDetailsFromClient.getHireDate());
-        existingHire.setStartDate(hireDetailsFromClient.getStartDate());
-        existingHire.setStartTime(hireDetailsFromClient.getStartTime());
-        existingHire.setEndTime(hireDetailsFromClient.getEndTime());
-        existingHire.setLocation(hireDetailsFromClient.getLocation());
+        if (newStatus != null) existingHire.setJobStatus(newStatus);
+        if (hireDto.getHireName() != null) existingHire.setHireName(hireDto.getHireName());
+        if (hireDto.getHireDetail() != null) existingHire.setHireDetail(hireDto.getHireDetail());
+        if (hireDto.getHireDate() != null) existingHire.setHireDate(hireDto.getHireDate());
+        if (hireDto.getStartDate() != null) existingHire.setStartDate(hireDto.getStartDate());
+        if (hireDto.getStartTime() != null) existingHire.setStartTime(hireDto.getStartTime());
+        if (hireDto.getEndTime() != null) existingHire.setEndTime(hireDto.getEndTime());
+        if (hireDto.getLocation() != null) existingHire.setLocation(hireDto.getLocation());
 
-        // ** แก้ไข: ลบโค้ดส่วนนี้ออกเพื่อป้องกันการ Overwrite **
-        // if (hireDetailsFromClient.getProgressionImageUrls() != null) {
-        //     existingHire.setProgressionImageUrls(hireDetailsFromClient.getProgressionImageUrls());
-        //     Hibernate.initialize(existingHire.getProgressionImageUrls());
-        // }
+        if (hireDto.getSkillType() != null
+                && hireDto.getSkillType().getSkillTypeId() != null
+                && !existingHire.getSkillType().getSkillTypeId()
+                .equals(hireDto.getSkillType().getSkillTypeId())) {
+            SkillType newSkillType = skillTypeRepository.findById(
+                    hireDto.getSkillType().getSkillTypeId()
+            ).orElseThrow(() ->
+                    new IllegalArgumentException("SkillType with ID "
+                            + hireDto.getSkillType().getSkillTypeId() + " not found."));
+            existingHire.setSkillType(newSkillType);
+        }
 
         Hire updatedHire = hireRepository.save(existingHire);
-        return hireRepository.fetchByIdWithAllDetails(updatedHire.getHireId()).orElse(updatedHire);
+        Hire finalHire = hireRepository.fetchByIdWithAllDetails(updatedHire.getHireId()).orElse(updatedHire);
+        return hireMapper.toDto(finalHire);
     }
 
     @Override
@@ -160,20 +194,69 @@ public class HireServiceImpl implements HireService {
     public void deleteHire(Integer id) {
         hireRepository.deleteById(id);
     }
+
     @Override
     @Transactional
-    public Hire addProgressionImagesToHire(Integer hireId, List<String> imageUrls) {
-        // ดึงข้อมูล Hire แบบครบถ้วน เพื่อให้แน่ใจว่า progressionImageUrls ถูกโหลดมา
+    public HireDTO addProgressionImagesToHire(Integer hireId, List<String> imageUrls) {
         Hire hire = hireRepository.fetchByIdWithAllDetails(hireId)
                 .orElseThrow(() -> new IllegalArgumentException("Hire with ID " + hireId + " not found."));
-
-        // เพิ่ม URL ใหม่เข้าไปใน Collection เดิม
-        if (hire.getProgressionImageUrls() == null) {
-            hire.setProgressionImageUrls(new ArrayList<>());
-        }
+        if (hire.getProgressionImageUrls() == null) hire.setProgressionImageUrls(new ArrayList<>());
         hire.getProgressionImageUrls().addAll(imageUrls);
 
-        // บันทึกการเปลี่ยนแปลง
-        return hireRepository.save(hire);
+        Hire updatedHire = hireRepository.save(hire);
+        return hireMapper.toDto(updatedHire);
+    }
+
+    // --- Helper methods (ทำงานกับ Entity) ---
+    private double calculateTotalPayment(Housekeeper housekeeper, SkillType mainSkillType, List<Integer> additionalSkillTypeIds) {
+        double totalPayment = 0.0;
+
+        HousekeeperSkill mainSkill = housekeeper.getHousekeeperSkills().stream()
+                .filter(s -> s.getSkillType().getSkillTypeId().equals(mainSkillType.getSkillTypeId()))
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Housekeeper " + housekeeper.getId()
+                                + " does not have main skill type " + mainSkillType.getSkillTypeId() + "."));
+        totalPayment += mainSkill.getPricePerDay();
+
+        if (additionalSkillTypeIds != null && !additionalSkillTypeIds.isEmpty()) {
+            for (Integer additionalSkillId : additionalSkillTypeIds) {
+                HousekeeperSkill additionalSkill = housekeeper.getHousekeeperSkills().stream()
+                        .filter(s -> s.getSkillType().getSkillTypeId().equals(additionalSkillId))
+                        .findFirst()
+                        .orElseThrow(() ->
+                                new IllegalArgumentException("Housekeeper " + housekeeper.getId()
+                                        + " does not have additional skill type " + additionalSkillId + "."));
+                totalPayment += additionalSkill.getPricePerDay();
+            }
+        }
+        return totalPayment;
+    }
+
+    private Hirer validateAndGetHirer(Hire hire) {
+        if (hire.getHirer() == null || hire.getHirer().getId() == null) {
+            throw new IllegalArgumentException("Hirer ID is required for creating a hire.");
+        }
+        return hirerRepository.findById(hire.getHirer().getId())
+                .orElseThrow(() -> new HirerNotFoundException("Hirer with ID "
+                        + hire.getHirer().getId() + " not found."));
+    }
+
+    private Housekeeper validateAndGetHousekeeper(Hire hire) {
+        if (hire.getHousekeeper() == null || hire.getHousekeeper().getId() == null) {
+            throw new IllegalArgumentException("Housekeeper ID is required for creating a hire.");
+        }
+        return housekeeperRepository.findById(hire.getHousekeeper().getId())
+                .orElseThrow(() -> new HousekeeperNotFoundException("Housekeeper with ID "
+                        + hire.getHousekeeper().getId() + " not found."));
+    }
+
+    private SkillType validateAndGetSkillType(Hire hire) {
+        if (hire.getSkillType() == null || hire.getSkillType().getSkillTypeId() == null) {
+            throw new IllegalArgumentException("SkillType ID is required for creating a hire.");
+        }
+        return skillTypeRepository.findById(hire.getSkillType().getSkillTypeId())
+                .orElseThrow(() -> new IllegalArgumentException("SkillType with ID "
+                        + hire.getSkillType().getSkillTypeId() + " not found."));
     }
 }

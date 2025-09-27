@@ -1,5 +1,6 @@
 package com.itsci.mju.maebanjumpen.controller;
 
+import com.itsci.mju.maebanjumpen.dto.HirerDTO;
 import com.itsci.mju.maebanjumpen.model.Hirer;
 import com.itsci.mju.maebanjumpen.service.HirerService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,26 +17,26 @@ public class HirerController {
     private HirerService hirerService;
 
     @GetMapping
-    public ResponseEntity<List<Hirer>> getAllHirers() {
-        List<Hirer> hirers = hirerService.getAllHirers();
+    public ResponseEntity<List<HirerDTO>> getAllHirers() {
+        List<HirerDTO> hirers = hirerService.getAllHirers();
         return ResponseEntity.ok(hirers);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Hirer> getHirerById(@PathVariable int id) {
-        Hirer hirer = hirerService.getHirerById(id);
+    public ResponseEntity<HirerDTO> getHirerById(@PathVariable int id) {
+        HirerDTO hirer = hirerService.getHirerById(id);
         return ResponseEntity.ok(hirer);
     }
 
     @PostMapping
-    public ResponseEntity<Hirer> createHirer(@RequestBody Hirer hirer) {
-        Hirer savedHirer = hirerService.saveHirer(hirer);
+    public ResponseEntity<HirerDTO> createHirer(@RequestBody HirerDTO hirer) {
+        HirerDTO savedHirer = hirerService.saveHirer(hirer);
         return ResponseEntity.ok(savedHirer);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Hirer> updateHirer(@PathVariable int id, @RequestBody Hirer hirer) {
-        Hirer updatedHirer = hirerService.updateHirer(id, hirer);
+    public ResponseEntity<HirerDTO> updateHirer(@PathVariable int id, @RequestBody HirerDTO hirer) {
+        HirerDTO updatedHirer = hirerService.updateHirer(id, hirer);
         return ResponseEntity.ok(updatedHirer);
     }
 

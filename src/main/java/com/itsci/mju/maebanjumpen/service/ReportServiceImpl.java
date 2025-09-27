@@ -1,17 +1,22 @@
 package com.itsci.mju.maebanjumpen.service;
 
+import com.itsci.mju.maebanjumpen.dto.ReportDTO; // ⬅️ ต้องใช้ DTO
 import com.itsci.mju.maebanjumpen.exception.AlreadyReportedException;
+import com.itsci.mju.maebanjumpen.mapper.ReportMapper; // ⬅️ ต้องใช้ Mapper
 import com.itsci.mju.maebanjumpen.model.*;
 import com.itsci.mju.maebanjumpen.repository.*;
+import lombok.RequiredArgsConstructor; // ⬅️ ใช้ Lombok แทน @Autowired
 import org.hibernate.Hibernate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors; // สำหรับ stream
 
 @Service
+@RequiredArgsConstructor // ⬅️ ใช้ Constructor Injection
+@Transactional(readOnly = true)
 public class ReportServiceImpl implements ReportService {
 
     private final ReportRepository reportRepository;
@@ -19,223 +24,122 @@ public class ReportServiceImpl implements ReportService {
     private final HirerRepository hirerRepository;
     private final HousekeeperRepository housekeeperRepository;
     private final PenaltyRepository penaltyRepository;
+    private final HireRepository hireRepository; // ✅ เพิ่ม HireRepository
+    private final ReportMapper reportMapper;
 
-    @Autowired
-    public ReportServiceImpl(ReportRepository reportRepository,
-                             PartyRoleRepository partyRoleRepository,
-                             HirerRepository hirerRepository,
-                             HousekeeperRepository housekeeperRepository,
-                             PenaltyRepository penaltyRepository) {
-        this.reportRepository = reportRepository;
-        this.partyRoleRepository = partyRoleRepository;
-        this.hirerRepository = hirerRepository;
-        this.housekeeperRepository = housekeeperRepository;
-        this.penaltyRepository = penaltyRepository;
-    }
-
-    // Helper method to initialize report properties
     private void initializeReport(Report report) {
         if (report == null) return;
-
         Hibernate.initialize(report.getReporter());
         Hibernate.initialize(report.getHirer());
         Hibernate.initialize(report.getHousekeeper());
         Hibernate.initialize(report.getPenalty());
+        Hibernate.initialize(report.getHire()); // ✅ Initialize Hire
 
-        // Initialize nested properties for Hirer
-        if (report.getHirer() instanceof Hirer) {
-            Hirer hirer = (Hirer) report.getHirer();
-            if (hirer.getPerson() != null) {
-                Hibernate.initialize(hirer.getPerson());
-                if (hirer.getPerson().getLogin() != null) {
-                    Hibernate.initialize(hirer.getPerson().getLogin());
-                }
-            }
-            if (hirer.getHires() != null) {
-                Hibernate.initialize(hirer.getHires());
-                hirer.getHires().forEach(hire -> {
-                    Hibernate.initialize(hire.getReview());
-                    Hibernate.initialize(hire.getHousekeeper());
-                    if (hire.getHousekeeper() != null && hire.getHousekeeper().getPerson() != null) {
-                        Hibernate.initialize(hire.getHousekeeper().getPerson());
-                        if (hire.getHousekeeper().getPerson().getLogin() != null) {
-                            Hibernate.initialize(hire.getHousekeeper().getPerson().getLogin());
-                        }
-                    }
-                });
-            }
+        if (report.getHirer() != null && report.getHirer().getPerson() != null) {
+            Hibernate.initialize(report.getHirer().getPerson());
         }
-
-        // Initialize nested properties for Housekeeper
-        if (report.getHousekeeper() instanceof Housekeeper) {
-            Housekeeper housekeeper = (Housekeeper) report.getHousekeeper();
-            if (housekeeper.getPerson() != null) {
-                Hibernate.initialize(housekeeper.getPerson());
-                if (housekeeper.getPerson().getLogin() != null) {
-                    Hibernate.initialize(housekeeper.getPerson().getLogin());
-                }
-            }
-            if (housekeeper.getHousekeeperSkills() != null) {
-                Hibernate.initialize(housekeeper.getHousekeeperSkills());
-                housekeeper.getHousekeeperSkills().forEach(skill -> Hibernate.initialize(skill.getSkillType()));
-            }
-            if (housekeeper.getHires() != null) {
-                Hibernate.initialize(housekeeper.getHires());
-                housekeeper.getHires().forEach(hire -> {
-                    Hibernate.initialize(hire.getReview());
-                    Hibernate.initialize(hire.getHirer());
-                    if (hire.getHirer() != null && hire.getHirer().getPerson() != null) {
-                        Hibernate.initialize(hire.getHirer().getPerson());
-                        if (hire.getHirer().getPerson().getLogin() != null) {
-                            Hibernate.initialize(hire.getHirer().getPerson().getLogin());
-                        }
-                    }
-                });
-            }
+        if (report.getHousekeeper() != null && report.getHousekeeper().getPerson() != null) {
+            Hibernate.initialize(report.getHousekeeper().getPerson());
         }
-
-        // Initialize nested properties for Reporter
         if (report.getReporter() != null && report.getReporter().getPerson() != null) {
             Hibernate.initialize(report.getReporter().getPerson());
-            if (report.getReporter().getPerson().getLogin() != null) {
-                Hibernate.initialize(report.getReporter().getPerson().getLogin());
-            }
         }
     }
 
-
     @Override
-    @Transactional(readOnly = true)
-    public List<Report> getAllReports() {
+    public List<ReportDTO> getAllReports() {
         List<Report> reports = reportRepository.findAll();
         reports.forEach(this::initializeReport);
-        return reports;
+        return reportMapper.toDtoList(reports);
     }
 
-
     @Override
-    @Transactional(readOnly = true)
-    public Report getReportById(int id) {
+    public ReportDTO getReportById(int id) {
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Report not found with id: " + id));
         initializeReport(report);
-        return report;
+        return reportMapper.toDto(report);
     }
-
 
     @Override
     @Transactional
-    public Report createReport(Report report) {
-        if (report.getReporter() == null || report.getReporter().getId() == null) {
-            throw new IllegalArgumentException("Reporter is required and must have a valid ID.");
+    public ReportDTO createReport(ReportDTO reportDto) {
+        // 1. ตรวจสอบว่ามีการรายงานซ้ำหรือไม่ (ต้องดึง Hire Entity มาเทียบ)
+        if (reportDto.getHireId() == null) {
+            throw new IllegalArgumentException("Hire ID is required.");
         }
-
-        PartyRole existingReporter = partyRoleRepository.findById(report.getReporter().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Reporter not found with ID: " + report.getReporter().getId()));
-
-        if (report.getHire() == null) {
-            throw new IllegalArgumentException("Hire information is required.");
-        }
-
-        Optional<Report> existingReportForHire = reportRepository.findByHire(report.getHire());
-        if (existingReportForHire.isPresent()) {
-            // แก้ไขบรรทัดนี้: โยน exception ที่กำหนดเอง
+        if (reportRepository.findByHire_HireId(reportDto.getHireId()).isPresent()) {
             throw new AlreadyReportedException("This job has already been reported.");
         }
 
-        // Set Reporter, Hirer, and Housekeeper from database
+        // 2. ดึง Entity จาก ID เพื่อผูกความสัมพันธ์
+        Report report = reportMapper.toEntity(reportDto);
+        PartyRole existingReporter = partyRoleRepository.findById(reportDto.getReporterId())
+                .orElseThrow(() -> new IllegalArgumentException("Reporter not found with ID: " + reportDto.getReporterId()));
+
+        Hire existingHire = hireRepository.findById(reportDto.getHireId())
+                .orElseThrow(() -> new IllegalArgumentException("Hire not found with ID: " + reportDto.getHireId()));
+
+        // 3. ผูกความสัมพันธ์
         report.setReporter(existingReporter);
+        report.setHire(existingHire); // ✅ ผูก Hire Entity
+        report.setHirer(reportDto.getHirerId() != null ? hirerRepository.findById(reportDto.getHirerId()).orElse(null) : null);
+        report.setHousekeeper(reportDto.getHousekeeperId() != null ? housekeeperRepository.findById(reportDto.getHousekeeperId()).orElse(null) : null);
+        report.setPenalty(reportDto.getPenaltyId() != null ? penaltyRepository.findById(reportDto.getPenaltyId()).orElse(null) : null);
 
-        // Use the Hirer from the report object if provided, otherwise check if reporter is a hirer
-        if (report.getHirer() != null && report.getHirer().getId() != null) {
-            Hirer existingHirer = hirerRepository.findById(report.getHirer().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Hirer not found with ID: " + report.getHirer().getId()));
-            report.setHirer(existingHirer);
-        } else if (existingReporter instanceof Hirer) {
-            report.setHirer((Hirer) existingReporter);
-        } else {
-            throw new IllegalArgumentException("Hirer is required and must have a valid ID.");
-        }
-
-        // Validate and set Housekeeper (optional)
-        if (report.getHousekeeper() != null && report.getHousekeeper().getId() != null) {
-            Housekeeper existingHousekeeper = housekeeperRepository.findById(report.getHousekeeper().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Housekeeper not found with ID: " + report.getHousekeeper().getId()));
-            report.setHousekeeper(existingHousekeeper);
-        } else {
-            report.setHousekeeper(null);
-        }
-
-        // Validate and set Penalty (optional)
-        if (report.getPenalty() != null && report.getPenalty().getPenaltyId() != null) {
-            Penalty existingPenalty = penaltyRepository.findById(report.getPenalty().getPenaltyId())
-                    .orElseThrow(() -> new IllegalArgumentException("Penalty not found with ID: " + report.getPenalty().getPenaltyId()));
-            report.setPenalty(existingPenalty);
-        } else {
-            report.setPenalty(null);
-        }
-
-        // Set default report status if not provided
+        // 4. Set default status
         if (report.getReportStatus() == null || report.getReportStatus().isEmpty()) {
             report.setReportStatus("pending");
         }
 
         Report savedReport = reportRepository.save(report);
-        initializeReport(savedReport); // Initialize the saved report before returning
-        return savedReport;
+        initializeReport(savedReport);
+        return reportMapper.toDto(savedReport);
     }
+
 
     @Override
     @Transactional
-    public Report updateReport(int id, Report updatedReport) {
+    public ReportDTO updateReport(int id, ReportDTO reportDto) { // ⬅️ เปลี่ยน Input/Output เป็น DTO
         Report existingReport = reportRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Report not found with id: " + id));
 
-        // Update basic fields
-        existingReport.setReportTitle(updatedReport.getReportTitle());
-        existingReport.setReportMessage(updatedReport.getReportMessage());
-        existingReport.setReportDate(updatedReport.getReportDate());
-        existingReport.setReportStatus(updatedReport.getReportStatus());
+        // 1. อัปเดต basic fields
+        if (reportDto.getReportTitle() != null) existingReport.setReportTitle(reportDto.getReportTitle());
+        if (reportDto.getReportMessage() != null) existingReport.setReportMessage(reportDto.getReportMessage());
+        if (reportDto.getReportDate() != null) existingReport.setReportDate(reportDto.getReportDate());
+        if (reportDto.getReportStatus() != null) existingReport.setReportStatus(reportDto.getReportStatus());
 
-        // Update Reporter
-        if (updatedReport.getReporter() != null && updatedReport.getReporter().getId() != null) {
-            PartyRole newReporter = partyRoleRepository.findById(updatedReport.getReporter().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Reporter not found with ID: " + updatedReport.getReporter().getId()));
+        // 2. อัปเดตความสัมพันธ์โดยใช้ ID จาก DTO
+        if (reportDto.getReporterId() != null) {
+            PartyRole newReporter = partyRoleRepository.findById(reportDto.getReporterId())
+                    .orElseThrow(() -> new IllegalArgumentException("Reporter not found with ID: " + reportDto.getReporterId()));
             existingReport.setReporter(newReporter);
-        } else {
-            existingReport.setReporter(null);
         }
 
-        // Update Hirer
-        if (updatedReport.getHirer() != null && updatedReport.getHirer().getId() != null) {
-            Hirer newHirer = hirerRepository.findById(updatedReport.getHirer().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Hirer not found with ID: " + updatedReport.getHirer().getId()));
+        if (reportDto.getHirerId() != null) {
+            Hirer newHirer = hirerRepository.findById(reportDto.getHirerId())
+                    .orElseThrow(() -> new IllegalArgumentException("Hirer not found with ID: " + reportDto.getHirerId()));
             existingReport.setHirer(newHirer);
-        } else {
-            existingReport.setHirer(null);
         }
 
-        // Update Housekeeper
-        if (updatedReport.getHousekeeper() != null && updatedReport.getHousekeeper().getId() != null) {
-            Housekeeper newHousekeeper = housekeeperRepository.findById(updatedReport.getHousekeeper().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Housekeeper not found with ID: " + updatedReport.getHousekeeper().getId()));
+        if (reportDto.getHousekeeperId() != null) {
+            Housekeeper newHousekeeper = housekeeperRepository.findById(reportDto.getHousekeeperId())
+                    .orElseThrow(() -> new IllegalArgumentException("Housekeeper not found with ID: " + reportDto.getHousekeeperId()));
             existingReport.setHousekeeper(newHousekeeper);
-        } else {
-            existingReport.setHousekeeper(null);
         }
 
-        // Update Penalty
-        if (updatedReport.getPenalty() != null && updatedReport.getPenalty().getPenaltyId() != null) {
-            Penalty newPenalty = penaltyRepository.findById(updatedReport.getPenalty().getPenaltyId())
-                    .orElseThrow(() -> new IllegalArgumentException("Penalty not found with ID: " + updatedReport.getPenalty().getPenaltyId()));
+        if (reportDto.getPenaltyId() != null) {
+            Penalty newPenalty = penaltyRepository.findById(reportDto.getPenaltyId())
+                    .orElseThrow(() -> new IllegalArgumentException("Penalty not found with ID: " + reportDto.getPenaltyId()));
             existingReport.setPenalty(newPenalty);
-        } else {
-            existingReport.setPenalty(null);
+        } else if (reportDto.getPenaltyId() == null) {
+            existingReport.setPenalty(null); // อนุญาตให้ล้าง Penalty ได้
         }
 
         Report savedReport = reportRepository.save(existingReport);
         initializeReport(savedReport);
-        return savedReport;
+        return reportMapper.toDto(savedReport); // ⬅️ แปลง Entity กลับเป็น DTO
     }
 
     @Override
@@ -245,32 +149,30 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<Report> getReportsByStatus(String reportStatus) {
+    public List<ReportDTO> getReportsByStatus(String reportStatus) { // ⬅️ เปลี่ยน Output เป็น DTO
         List<Report> reports = reportRepository.findByReportStatus(reportStatus);
         reports.forEach(this::initializeReport);
-        return reports;
+        return reportMapper.toDtoList(reports); // ⬅️ ใช้ Mapper
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Optional<Report> findByPenaltyId(Integer penaltyId) {
+    public Optional<ReportDTO> findByPenaltyId(Integer penaltyId) { // ⬅️ เปลี่ยน Output เป็น DTO
         if (penaltyId == null) {
             return Optional.empty();
         }
         Optional<Report> reportOptional = reportRepository.findByPenalty_PenaltyId(penaltyId);
         reportOptional.ifPresent(this::initializeReport);
-        return reportOptional;
+
+        return reportOptional.map(reportMapper::toDto); // ⬅️ แปลง Entity เป็น DTO
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Optional<Report> findLatestReportWithPenaltyByPersonId(Integer personId) {
+    public Optional<ReportDTO> findLatestReportWithPenaltyByPersonId(Integer personId) { // ⬅️ เปลี่ยน Output เป็น DTO
         List<Report> reports = reportRepository.findReportsWithPenaltyByPersonId(personId);
         if (!reports.isEmpty()) {
             Report latestReport = reports.get(0);
             initializeReport(latestReport);
-            return Optional.of(latestReport);
+            return Optional.of(reportMapper.toDto(latestReport)); // ⬅️ แปลง Entity เป็น DTO
         }
         return Optional.empty();
     }

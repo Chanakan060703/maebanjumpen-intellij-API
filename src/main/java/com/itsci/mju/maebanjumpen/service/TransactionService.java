@@ -1,23 +1,28 @@
 package com.itsci.mju.maebanjumpen.service;
 
-import com.itsci.mju.maebanjumpen.model.Transaction;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.itsci.mju.maebanjumpen.dto.TransactionDTO;
 import java.util.List;
 import java.util.Optional;
 
 public interface TransactionService {
 
-    // Basic CRUD operations
-    List<Transaction> getAllTransactions();
-    Optional<Transaction> getTransactionById(int id);
-    Transaction saveTransaction(Transaction transaction);
+    // Basic CRUD operations: ใช้ DTO
+    List<TransactionDTO> getAllTransactions();
+    Optional<TransactionDTO> getTransactionById(int id);
+    TransactionDTO saveTransaction(TransactionDTO transactionDto);
     void deleteTransaction(int id);
 
-    // Member-specific operations
-    List<Transaction> getTransactionsByMemberId(int memberId);
+    // Member-specific operations: ใช้ DTO
+    List<TransactionDTO> getTransactionsByMemberId(int memberId);
 
-    // Withdrawal-related operations
-    List<Transaction> getWithdrawalRequests();
-    Optional<Transaction> updateWithdrawalRequestStatus(Integer transactionId, String newStatus);
+    // Withdrawal-related operations: ใช้ DTO
+    List<TransactionDTO> getWithdrawalRequests();
+    Optional<TransactionDTO> updateWithdrawalRequestStatus(Integer transactionId, String newStatus);
+
+    // Omise Webhook Processing: ⬅️ เมธอดสำหรับการประมวลผล Webhook
+    void processOmiseChargeComplete(JsonNode omisePayload) throws Exception;
+
 
     // Status-related utility methods
     String getLocalizedStatus(String status, boolean isEnglish);

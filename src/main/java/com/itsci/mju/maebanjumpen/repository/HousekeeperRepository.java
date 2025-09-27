@@ -24,21 +24,20 @@ public interface HousekeeperRepository extends JpaRepository<Housekeeper, Intege
     List<Housekeeper> findAllWithPersonLoginAndSkills();
 
     @Query("SELECT DISTINCT h FROM Housekeeper h " +
-            "JOIN FETCH h.person p " +
+            "LEFT JOIN FETCH h.person p " +
             "LEFT JOIN FETCH p.login l " +
             "LEFT JOIN FETCH h.housekeeperSkills hsk " +
+            "LEFT JOIN FETCH hsk.skillType st " +
+            "LEFT JOIN FETCH hsk.skillLevelTier slt " +
             "LEFT JOIN FETCH h.hires hi " +
             "LEFT JOIN FETCH hi.review r " +
-            "LEFT JOIN FETCH hi.hirer hirer_obj " +
-            "LEFT JOIN FETCH hirer_obj.person hp " +
-            "LEFT JOIN FETCH hp.login hpl " +
             "WHERE h.id = :id")
-    Optional<Housekeeper> findByIdWithPersonLoginAndSkills(@Param("id") int id);
+    Optional<Housekeeper> findByIdWithAllDetails(@Param("id") int id);
+
 
     @Query("SELECT AVG(r.score) FROM Review r JOIN r.hire h WHERE h.housekeeper.id = :housekeeperId AND h.jobStatus = 'Completed'")
     Double calculateAverageRatingByHousekeeperId(@Param("housekeeperId") Integer housekeeperId);
 
-    // เมธอดเดิม (อาจจะยังใช้หรือไม่ใช้ก็ได้ ขึ้นอยู่กับ Controller)
     @Query("SELECT DISTINCT h FROM Housekeeper h " +
             "JOIN FETCH h.person p " +
             "LEFT JOIN FETCH p.login l " +
@@ -51,7 +50,7 @@ public interface HousekeeperRepository extends JpaRepository<Housekeeper, Intege
             "WHERE h.statusVerify = :statusVerify")
     List<Housekeeper> findByStatusVerifyWithDetails(@Param("statusVerify") String statusVerify);
 
-    // *** เพิ่ม Query ใหม่นี้: สำหรับดึง Housekeeper ที่ statusVerify เป็น 'not verified' หรือ NULL ***
+    // *** NEW: Query สำหรับดึง Housekeeper ที่ statusVerify เป็น 'PENDING' หรือ NULL ***
     @Query("SELECT DISTINCT h FROM Housekeeper h " +
             "JOIN FETCH h.person p " +
             "LEFT JOIN FETCH p.login l " +
@@ -61,6 +60,6 @@ public interface HousekeeperRepository extends JpaRepository<Housekeeper, Intege
             "LEFT JOIN FETCH hi.hirer hirer_obj " +
             "LEFT JOIN FETCH hirer_obj.person hp " +
             "LEFT JOIN FETCH hp.login hpl " +
-            "WHERE h.statusVerify = 'not verified' OR h.statusVerify IS NULL")
+            "WHERE h.statusVerify = 'PENDING' OR h.statusVerify IS NULL")
     List<Housekeeper> findNotVerifiedOrNullStatusHousekeepersWithDetails();
 }

@@ -1,63 +1,66 @@
 package com.itsci.mju.maebanjumpen.service;
 
+import com.itsci.mju.maebanjumpen.dto.MemberDTO;
+import com.itsci.mju.maebanjumpen.mapper.MemberMapper; // ⬅️ Import Mapper
 import com.itsci.mju.maebanjumpen.model.Hirer;
 import com.itsci.mju.maebanjumpen.model.Housekeeper;
 import com.itsci.mju.maebanjumpen.model.Member;
 import com.itsci.mju.maebanjumpen.model.Person;
-// No longer need Hibernate import here as manual initialization is removed
-// import org.hibernate.Hibernate;
 import com.itsci.mju.maebanjumpen.repository.MemberRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor; // ⬅️ ใช้แทน @Autowired
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-// No longer need specific model imports like Hire, HousekeeperSkill, SkillType, Set
-// as their direct initialization logic is moved out.
 
 @Service
+@RequiredArgsConstructor // ⬅️ ใช้ DI แบบ Constructor
 public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
+    private final MemberMapper memberMapper; // ⬅️ Inject Mapper
 
-    @Autowired
-    public MemberServiceImpl(MemberRepository memberRepository) {
-        this.memberRepository = memberRepository;
-    }
-
-    // --- REMOVED: initializeMemberRelated helper method ---
-    // The repository is now responsible for eager loading all necessary relationships.
-
+    // 1. saveMember: รับ DTO, แปลงเป็น Entity, บันทึก, แปลงกลับเป็น DTO
     @Override
     @Transactional
-    public Member saveMember(Member member) {
-        return memberRepository.save(member);
+    public MemberDTO saveMember(MemberDTO memberDto) { // ⬅️ เปลี่ยน Input/Output เป็น DTO
+        Member member = memberMapper.toEntity(memberDto); // ⬅️ แปลง DTO -> Entity
+        Member savedMember = memberRepository.save(member);
+        return memberMapper.toDto(savedMember); // ⬅️ แปลง Entity -> DTO
     }
 
+    // 2. getMemberById: คืนค่า Optional<MemberDTO>
     @Override
     @Transactional(readOnly = true)
-    public Optional<Member> getMemberById(int id) {
-        // The findById method in the repository is now configured with @EntityGraph
-        // to fetch all necessary details eagerly.
-        return memberRepository.findById(id);
+    public Optional<MemberDTO> getMemberById(int id) { // ⬅️ เปลี่ยน Output เป็น Optional<MemberDTO>
+        // Repository ดึง Entity มา
+        return memberRepository.findById(id)
+                // ใช้ map() เพื่อแปลง Member Entity เป็น MemberDTO DTO
+                .map(memberMapper::toDto);
     }
 
+    // 3. getAllMembers: คืนค่า List<MemberDTO>
     @Override
     @Transactional(readOnly = true)
-    public List<Member> getAllMembers() {
-        // The findAll method in the repository is now configured with @EntityGraph
-        // to fetch all necessary details eagerly for each member.
-        return memberRepository.findAll();
+    public List<MemberDTO> getAllMembers() { // ⬅️ เปลี่ยน Output เป็น List<MemberDTO>
+        List<Member> members = memberRepository.findAll();
+        return memberMapper.toList(members); // ⬅️ ใช้ Mapper แปลง List<Entity> -> List<DTO>
     }
 
+    // 4. updateMember: รับ DTO, ดึง Entity, อัปเดต, บันทึก, แปลงกลับเป็น DTO
     @Override
     @Transactional
-    public Member updateMember(int id, Member memberDetails) {
-        // Fetch the existing member with all its details using the configured findById
+    public MemberDTO updateMember(int id, MemberDTO memberDto) { // ⬅️ เปลี่ยน Input/Output เป็น DTO
+        // 1. ดึง Entity เดิม (พร้อม Eager-Loaded dependencies)
         Member existingMember = memberRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("ไม่พบสมาชิกด้วย ID: " + id));
+
+        // 2. แปลง DTO ขาเข้าเป็น Entity เพื่อดึงค่าที่อัปเดตมาใช้
+        Member memberDetails = memberMapper.toEntity(memberDto);
+
+        // 3. อัปเดต Entity เดิมด้วยค่าจาก Entity ใหม่ที่แปลงมาจาก DTO
 
         // Update basic Member fields
         if (memberDetails.getBalance() != null) {
@@ -66,12 +69,13 @@ public class MemberServiceImpl implements MemberService {
 
         // Update Person details
         if (existingMember.getPerson() != null && memberDetails.getPerson() != null) {
-            // Ensure we are updating the same Person entity
-            // Using ID for comparison ensures you're not trying to swap Person objects directly
+            // ⚠️ ตรวจสอบ ID Card Number ว่าตรงกันหรือไม่
             if (existingMember.getPerson().getPersonId().equals(memberDetails.getPerson().getPersonId())) {
                 Person existingPerson = existingMember.getPerson();
                 Person detailPerson = memberDetails.getPerson();
 
+                // ⚠️ MapStruct ควรจัดการการอัปเดต Person/Login ในเมธอด toEntity/toDto
+                // แต่เนื่องจากตรรกะอัปเดตซับซ้อน (มี Login/ID Check) เราจึงยังคงเขียนด้วยมือ
                 existingPerson.setEmail(detailPerson.getEmail());
                 existingPerson.setFirstName(detailPerson.getFirstName());
                 existingPerson.setLastName(detailPerson.getLastName());
@@ -79,47 +83,40 @@ public class MemberServiceImpl implements MemberService {
                 existingPerson.setPhoneNumber(detailPerson.getPhoneNumber());
                 existingPerson.setAddress(detailPerson.getAddress());
                 existingPerson.setPictureUrl(detailPerson.getPictureUrl());
-                existingPerson.setAccountStatus(detailPerson.getAccountStatus());
+                // ⚠️ ควบคุมการอัปเดต accountStatus: ควรทำผ่านเมธอดเฉพาะ
+                // existingPerson.setAccountStatus(detailPerson.getAccountStatus());
 
                 // Update Login password if present in incoming details
-                if (existingPerson.getLogin() != null && detailPerson.getLogin() != null) {
+                if (existingPerson.getLogin() != null && detailPerson.getLogin() != null && detailPerson.getLogin().getPassword() != null) {
+                    // ⚠️ หากต้องการ Hash Password: ต้องใช้ PasswordUtil.hashPassword() ที่นี่
                     existingPerson.getLogin().setPassword(detailPerson.getLogin().getPassword());
-                } else if (existingPerson.getLogin() == null && detailPerson.getLogin() != null) {
-                    // This scenario means an existing member might not have a login, and we're adding one.
-                    // Ensure proper handling (e.g., login repository save if login is separate, or cascade type).
-                    existingPerson.setLogin(detailPerson.getLogin());
                 }
             } else {
                 throw new IllegalArgumentException("ไม่สามารถเปลี่ยน Person ที่เชื่อมโยงกับ Member นี้ได้โดยตรง. Person ID ไม่ตรงกัน.");
             }
-        } else if (existingMember.getPerson() == null && memberDetails.getPerson() != null) {
-            // This scenario means an existing member does not have a person, and we're adding one.
-            // Ensure proper handling (e.g., person repository save if person is separate, or cascade type).
-            existingMember.setPerson(memberDetails.getPerson());
         }
+        // ⚠️ โค้ดที่เหลือสำหรับการจัดการ Hirer/Housekeeper ยังคงต้องใช้ instanceof ใน Service Layer
 
         // Handle specific fields for Hirer/Housekeeper
-        if (existingMember instanceof Hirer && memberDetails instanceof Hirer) {
-            Hirer existingHirer = (Hirer) existingMember;
-            Hirer detailHirer = (Hirer) memberDetails;
-            // Update Hirer-specific fields if any (e.g.,: existingHirer.setSomeHirerSpecificField(detailHirer.getSomeHirerSpecificField());)
-        } else if (existingMember instanceof Housekeeper && memberDetails instanceof Housekeeper) {
+        if (existingMember instanceof Housekeeper && memberDetails instanceof Housekeeper) {
             Housekeeper existingHousekeeper = (Housekeeper) existingMember;
             Housekeeper detailHousekeeper = (Housekeeper) memberDetails;
             existingHousekeeper.setPhotoVerifyUrl(detailHousekeeper.getPhotoVerifyUrl());
-            existingHousekeeper.setStatusVerify(detailHousekeeper.getStatusVerify());
-            // Rating and DailyRate should ideally be updated through specific methods or business logic,
-            // not directly from client payload unless it's an admin function.
-            existingHousekeeper.setRating(detailHousekeeper.getRating());
+            // ⚠️ ควรใช้ Enum หรือ String ที่ตรวจสอบได้
+            if (detailHousekeeper.getStatusVerify() != null) {
+                existingHousekeeper.setStatusVerify(detailHousekeeper.getStatusVerify());
+            }
+            // ⚠️ Rating ไม่ควรถูกอัปเดตจาก DTO โดยตรง
+            // existingHousekeeper.setRating(detailHousekeeper.getRating());
             existingHousekeeper.setDailyRate(detailHousekeeper.getDailyRate());
-            // Managing collections like 'hires' or 'housekeeperSkills' here requires careful consideration
-            // of Hibernate's dirty checking and cascade types (e.g., merging, removing orphans).
-            // For updates to collections, it's often better to have dedicated methods.
         }
 
-        return memberRepository.save(existingMember);
+        // 4. บันทึกและแปลงกลับเป็น DTO
+        Member updatedMember = memberRepository.save(existingMember);
+        return memberMapper.toDto(updatedMember); // ⬅️ แปลง Entity -> DTO
     }
 
+    // 5. deleteMember: ไม่มีการเปลี่ยนแปลงเนื่องจากไม่มี I/O DTO
     @Override
     @Transactional
     public void deleteMember(int id) {
@@ -129,9 +126,10 @@ public class MemberServiceImpl implements MemberService {
         memberRepository.deleteById(id);
     }
 
+    // 6. deductBalance: คืนค่า MemberDTO
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
-    public Member deductBalance(int memberId, double amount) {
+    public MemberDTO deductBalance(int memberId, double amount) { // ⬅️ เปลี่ยน Output เป็น DTO
         // Use findByIdWithLock for thread-safe balance deduction
         Optional<Member> optionalMember = memberRepository.findByIdWithLock(memberId);
 
@@ -140,7 +138,7 @@ public class MemberServiceImpl implements MemberService {
         }
 
         Member member = optionalMember.get();
-
+        // ... (ตรรกะการตรวจสอบ Housekeeper และยอดเงินคงเดิม) ...
         if (!(member instanceof Housekeeper)) {
             throw new IllegalArgumentException("รายการหักยอดเงินนี้ไม่ได้มาจากแม่บ้าน (Housekeeper).");
         }
@@ -156,7 +154,8 @@ public class MemberServiceImpl implements MemberService {
         double newBalance = housekeeper.getBalance() - amount;
         housekeeper.setBalance(newBalance);
 
-        // The save method will persist the changes to the managed entity
-        return memberRepository.save(housekeeper);
+        // บันทึกและแปลงกลับเป็น DTO
+        Member savedMember = memberRepository.save(housekeeper);
+        return memberMapper.toDto(savedMember); // ⬅️ แปลง Entity -> DTO
     }
 }

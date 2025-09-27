@@ -15,5 +15,5 @@ import lombok.NoArgsConstructor;
 @Data
 @JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
 public class AccountManager extends PartyRole {
-    private Integer managerID;
+ private Integer managerID;
 }

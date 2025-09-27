@@ -1,129 +1,159 @@
 package com.itsci.mju.maebanjumpen.service;
 
+import com.itsci.mju.maebanjumpen.dto.ReviewDTO;
+import com.itsci.mju.maebanjumpen.mapper.ReviewMapper;
 import com.itsci.mju.maebanjumpen.model.Review;
 import com.itsci.mju.maebanjumpen.model.Hire;
 import com.itsci.mju.maebanjumpen.repository.ReviewRepository;
 import com.itsci.mju.maebanjumpen.repository.HireRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ReviewServiceImpl implements ReviewService {
 
-    @Autowired
-    private ReviewRepository reviewRepository;
-
-    @Autowired
-    private HireRepository hireRepository;
-
-    @Autowired
-    private HousekeeperService housekeeperService;
+    private final ReviewRepository reviewRepository;
+    private final HireRepository hireRepository;
+    private final HousekeeperService housekeeperService; // 💡 ถูก Inject แล้ว
+    private final HireStatusUpdateService hireStatusUpdateService;
+    private final ReviewMapper reviewMapper;
 
     @Override
-    @Transactional(readOnly = true)
-    public List<Review> getAllReviews() {
-        return reviewRepository.findAll();
+    public List<ReviewDTO> getAllReviews() {
+        List<Review> reviews = reviewRepository.findAll(); // ⬅️ เรียกใช้เมธอดที่มี @EntityGraph
+        return reviewMapper.toDtoList(reviews);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Review getReviewById(int id) {
-        return reviewRepository.findById(id).orElse(null);
+    public ReviewDTO getReviewById(int id) {
+        return reviewRepository.findById(id)
+                .map(reviewMapper::toDto)
+                .orElse(null);
+    }
+
+    @Override
+    public ReviewDTO getReviewByHireId(int hireId) {
+        Review review = reviewRepository.findByHire_HireId(hireId);
+        return review != null ? reviewMapper.toDto(review) : null;
     }
 
     @Override
     @Transactional
-    public Review saveReview(Review review) {
-        // Check if the review object contains a valid hire ID.
-        if (review.getHire() == null || review.getHire().getHireId() == null) {
-            System.err.println("Error: Review object must contain a valid Hire ID.");
-            return null;
+    public ReviewDTO saveReview(ReviewDTO reviewDto) {
+
+        Integer hireId = reviewDto.getHireId();
+        if (hireId == null) {
+            throw new IllegalArgumentException("Hire ID is required for saving a review.");
         }
 
-        // 1. Fetch the Hire object from the database to ensure it's a managed entity.
-        Optional<Hire> existingHireOptional = hireRepository.findById(review.getHire().getHireId());
+        Optional<Hire> existingHireOptional = hireRepository.findById(hireId);
 
         if (existingHireOptional.isEmpty()) {
-            System.err.println("Error: Hire with ID " + review.getHire().getHireId() + " not found.");
-            return null;
+            throw new RuntimeException("Hire with ID " + hireId + " not found.");
         }
 
         Hire existingHire = existingHireOptional.get();
 
-        // Check if a review for this hire already exists.
         if (existingHire.getReview() != null) {
-            System.err.println("Error: Hire with ID " + existingHire.getHireId() + " already has a review (Review ID: " + existingHire.getReview().getReviewId() + ").");
-            return null;
+            throw new IllegalStateException("Hire with ID " + hireId + " already has a review (Review ID: " + existingHire.getReview().getReviewId() + ").");
         }
 
-        // Set the managed hire entity to the review object.
+        Review review = reviewMapper.toEntity(reviewDto);
         review.setHire(existingHire);
 
-        // 2. Save the new review to the database.
         Review savedReview = reviewRepository.save(review);
-        System.out.println("Review created successfully for Hire ID: " + savedReview.getHire().getHireId());
 
-        // 3. Update the job status of the associated hire to "Reviewed".
+        // Update Hire Status
         existingHire.setJobStatus("Reviewed");
         hireRepository.save(existingHire);
-        System.out.println("Updated Hire status to 'Reviewed' for ID: " + existingHire.getHireId());
 
-        // 4. After successfully saving, get the housekeeper's ID from the review's hire.
-        // The rating should be updated only if the review is for a housekeeper.
-        if (savedReview.getHire() != null && savedReview.getHire().getHousekeeper() != null) {
-            Integer housekeeperId = savedReview.getHire().getHousekeeper().getId();
-
-            // 5. Call the HousekeeperService to recalculate the rating.
-            // This ensures the housekeeper's rating is always up-to-date.
-            housekeeperService.calculateAndSetAverageRating(housekeeperId);
-            System.out.println("Triggered average rating update for Housekeeper ID: " + housekeeperId);
+        // Schedule status revert (ตรรกะการเปลี่ยนสถานะกลับ)
+        if (existingHire.getHireId() != null) {
+            // ⚠️ สมมติว่าต้องการให้สถานะกลับเป็น "Completed"
+            // เนื่องจากโค้ดก่อนหน้าใช้ 3 วินาที ผมจึงคงตัวเลขนี้ไว้
+            hireStatusUpdateService.scheduleStatusRevert(existingHire.getHireId(), 3);
         }
 
-        // Re-fetch the saved review with all its details before returning.
-        return reviewRepository.findById(savedReview.getReviewId()).orElse(null);
+        // ✅ Update Housekeeper Rating: การเรียกใช้ที่ถูกต้อง
+        if (savedReview.getHire().getHousekeeper() != null) {
+            Integer housekeeperId = savedReview.getHire().getHousekeeper().getId();
+            housekeeperService.calculateAndSetAverageRating(housekeeperId);
+        }
+
+        return reviewMapper.toDto(savedReview);
     }
 
     @Override
     @Transactional
     public void deleteReview(int id) {
-        reviewRepository.deleteById(id);
-    }
+        Optional<Review> reviewToDeleteOptional = reviewRepository.findById(id);
 
-    @Override
-    @Transactional(readOnly = true)
-    public Review getReviewByHireId(int hireId) {
-        return reviewRepository.findByHire_HireId(hireId);
+        if (reviewToDeleteOptional.isPresent()) {
+            Review reviewToDelete = reviewToDeleteOptional.get();
+            reviewRepository.deleteById(id);
+
+            // ✅ Recalculate rating after deletion
+            if (reviewToDelete.getHire() != null && reviewToDelete.getHire().getHousekeeper() != null) {
+                Integer housekeeperId = reviewToDelete.getHire().getHousekeeper().getId();
+                housekeeperService.calculateAndSetAverageRating(housekeeperId);
+            }
+        }
     }
 
     @Override
     @Transactional
-    public Review updateReview(int id, Review review) {
+    public ReviewDTO updateReview(int id, ReviewDTO reviewDto) { // ⬅️ เมธอดที่ได้รับการแก้ไข
         Review existingReview = reviewRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Review with ID " + id + " not found"));
 
-        existingReview.setReviewMessage(review.getReviewMessage());
-        existingReview.setReviewDate(review.getReviewDate());
-        existingReview.setScore(review.getScore());
+        // 1. อัปเดต fields พื้นฐาน
+        // 💡 ตรวจสอบว่ามีการเปลี่ยนแปลงคะแนนหรือไม่ก่อน
+        Double oldScore = existingReview.getScore();
+        Double newScore = reviewDto.getScore() != null ? Double.valueOf(reviewDto.getScore()) : oldScore;
 
-        if (review.getHire() != null && review.getHire().getHireId() != null) {
-            // Fetch the hire with all details to ensure it's a managed entity.
-            Hire managedHire = hireRepository.fetchByIdWithAllDetails(review.getHire().getHireId())
-                    .orElseThrow(() -> new RuntimeException("Hire with ID " + review.getHire().getHireId() + " not found"));
-            existingReview.setHire(managedHire);
-        } else {
+        if (reviewDto.getReviewMessage() != null) existingReview.setReviewMessage(reviewDto.getReviewMessage());
+        if (reviewDto.getReviewDate() != null) existingReview.setReviewDate(reviewDto.getReviewDate());
+        if (reviewDto.getScore() != null) existingReview.setScore(newScore);
+
+
+        // 2. การจัดการ Hire ID (ผูก Hire ใหม่ ถ้ามีการเปลี่ยนแปลง)
+        if (reviewDto.getHireId() != null) {
+            if (existingReview.getHire() == null || !existingReview.getHire().getHireId().equals(reviewDto.getHireId())) {
+                // Fetch และผูก Hire Entity ใหม่
+                Hire newHire = hireRepository.findById(reviewDto.getHireId())
+                        .orElseThrow(() -> new RuntimeException("Hire with ID " + reviewDto.getHireId() + " not found"));
+                existingReview.setHire(newHire);
+            }
+        } else if (reviewDto.getHireId() == null) {
             existingReview.setHire(null);
         }
 
+        // 3. Save Review
         Review updatedReview = reviewRepository.save(existingReview);
-        // Re-fetch the updated review with all its details
-        return reviewRepository.findById(updatedReview.getReviewId()).orElse(null);
+
+        // 4. ✅ Recalculate Housekeeper Rating: แม้จะไม่มีการเปลี่ยนคะแนน ก็ควรคำนวณใหม่เพื่อความปลอดภัย
+        if (updatedReview.getHire() != null && updatedReview.getHire().getHousekeeper() != null) {
+            Integer housekeeperId = updatedReview.getHire().getHousekeeper().getId();
+            housekeeperService.calculateAndSetAverageRating(housekeeperId);
+        }
+
+        // 5. แปลง Entity กลับเป็น DTO และคืนค่า
+        return reviewMapper.toDto(updatedReview);
     }
 
     @Override
-    public List<Review> getReviewsByHireId(int hireId) {
+    public List<ReviewDTO> getReviewsByHireId(int hireId) {
+        // เนื่องจาก Review เป็น OneToOne กับ Hire เมธอดนี้จึงคืนค่า List ที่มีสมาชิกเดียว
+        Review review = reviewRepository.findByHire_HireId(hireId);
+        if (review != null) {
+            return List.of(reviewMapper.toDto(review));
+        }
         return List.of();
     }
 }
