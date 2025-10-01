@@ -2,13 +2,11 @@ package com.itsci.mju.maebanjumpen.service;
 
 import com.itsci.mju.maebanjumpen.dto.HousekeeperDTO;
 import com.itsci.mju.maebanjumpen.dto.HousekeeperDetailDTO;
-import com.itsci.mju.maebanjumpen.dto.ReviewDTO; // ต้องใช้ ReviewDTO
+import com.itsci.mju.maebanjumpen.dto.ReviewDTO;
+import com.itsci.mju.maebanjumpen.dto.HireDTO;
 import com.itsci.mju.maebanjumpen.exception.HousekeeperNotFoundException;
-// import com.itsci.mju.maebanjumpen.mapper.HousekeeperDetailMapper; // ❌ ลบการ Import นี้
 import com.itsci.mju.maebanjumpen.mapper.HousekeeperMapper;
 import com.itsci.mju.maebanjumpen.mapper.PersonMapper;
-import com.itsci.mju.maebanjumpen.mapper.ReviewMapper; // 💡 เพิ่ม ReviewMapper
-import com.itsci.mju.maebanjumpen.model.Hire;
 import com.itsci.mju.maebanjumpen.model.Housekeeper;
 import com.itsci.mju.maebanjumpen.model.Person;
 import com.itsci.mju.maebanjumpen.repository.HousekeeperRepository;
@@ -27,19 +25,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HousekeeperServiceImpl implements HousekeeperService {
 
-    // 🎯 Dependencies ที่จำเป็นทั้งหมด
     private final HousekeeperMapper housekeeperMapper;
-    // private final HousekeeperDetailMapper housekeeperDetailMapper; // ❌ ลบ Field นี้
     private final HousekeeperRepository housekeeperRepository;
     private final PersonMapper personMapper;
     private final PersonRepository personRepository;
-    private final ReviewMapper reviewMapper; // 💡 เพิ่ม ReviewMapper
 
     @Value("${app.public-base-url}")
     private String publicBaseUrl;
 
     // --- Helper Methods (URL Transformation) ---
-    // ... (เมธอด buildFullImageUrl และ transformHousekeeperUrls เหมือนเดิม)
     private String buildFullImageUrl(String filename, String folderName) {
         if (filename == null || filename.isEmpty()) {
             return null;
@@ -61,64 +55,67 @@ public class HousekeeperServiceImpl implements HousekeeperService {
         return housekeeper;
     }
 
-    // 💡 NEW: ตรรกะการดึง Review จาก Hire List (ย้ายมาจาก Mapper)
-    private List<ReviewDTO> extractReviewsFromHires(List<Hire> hires) {
-        if (hires == null) return Collections.emptyList();
+    private void transformHireHirerUrls(List<HireDTO> hires) {
+        if (hires == null) return;
 
-        return hires.stream()
-                .filter(hire -> hire.getReview() != null)
-                .map(Hire::getReview)
-                .map(reviewMapper::toDto)
-                .collect(Collectors.toList());
+        for (HireDTO hireDto : hires) {
+            if (hireDto.getHirer() != null && hireDto.getHirer().getPerson() != null) {
+                // ⭐️ ที่นี่คือการแก้ไขหลัก: แปลง URL รูปโปรไฟล์ของ Hirer (ผู้รีวิว)
+                var hirerPersonDto = hireDto.getHirer().getPerson();
+                String originalFilename = hirerPersonDto.getPictureUrl();
+                String fullUrl = buildFullImageUrl(originalFilename, "profile_pictures");
+                hirerPersonDto.setPictureUrl(fullUrl);
+            }
+        }
     }
 
-    // --- Service Implementation Methods ---
 
     @Override
     @Transactional(readOnly = true)
     public List<HousekeeperDTO> getAllHousekeepers() {
-        // ใช้ Repositoy method ที่โหลดเฉพาะ Person/Login/Skills (เพื่อประสิทธิภาพ)
         List<Housekeeper> entities = housekeeperRepository.findAllWithPersonLoginAndSkills();
-
         return entities.stream()
                 .map(this::transformHousekeeperUrls)
                 .map(housekeeperMapper::toDto)
                 .collect(Collectors.toList());
     }
 
-    // 🎯 เมธอดสำหรับหน้ารายละเอียดแม่บ้าน (ใช้ตรรกะการแปลงด้วยมือ)
+    // 🎯 เมธอดสำหรับหน้ารายละเอียดแม่บ้าน (แก้ไขให้มีการ Transform URL รูป Hirer)
     @Override
     @Transactional(readOnly = true)
     public HousekeeperDetailDTO getHousekeeperDetailById(int id) {
-        // ใช้ Query ที่ดึง hires และ review มาแล้ว
         Optional<Housekeeper> housekeeperOptional = housekeeperRepository.findByIdWithAllDetails(id);
-
         if (housekeeperOptional.isEmpty()) {
             return null;
         }
-
         Housekeeper housekeeper = housekeeperOptional.get();
-
-        // 1. แปลง URL
         Housekeeper transformedHousekeeper = this.transformHousekeeperUrls(housekeeper);
-
-        // 2. แปลง Entity เป็น DTO (toDetailDto จะทำการคำนวณ jobsCompleted)
         HousekeeperDetailDTO detailDto = housekeeperMapper.toDetailDto(transformedHousekeeper);
 
-        // 3. 💡 โหลด Reviews ที่จำเป็นต้องทำ Manual Mapping
-        // ใช้ List<Hire> ที่ดึงมาพร้อมกับ Entity แล้ว
-        List<ReviewDTO> reviews = extractReviewsFromHires(housekeeper.getHires().stream().collect(Collectors.toList()));
+        // ⭐️ แก้ไขตรงนี้: ทำการแปลง URL รูป Hirer ทันทีที่ HireDTO ถูก Map เสร็จ
+        if (detailDto.getHires() != null) {
+            transformHireHirerUrls(detailDto.getHires()); // <--- เรียกใช้เมธอดใหม่นี้!
+        }
+
+        // 3. ดึง Reviews จาก HireDTOs
+        List<ReviewDTO> reviews = Collections.emptyList();
+        if (detailDto.getHires() != null) {
+            reviews = detailDto.getHires().stream()
+                    .map(HireDTO::getReview) // บรรทัดนี้จะไม่เกิด Error เพราะมันรันหลังจากแปลง URL แล้ว
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+
+        // 4. ตั้งค่า Reviews และล้าง Hires ออกจาก DTO
         detailDto.setReviews(reviews);
+        detailDto.setHires(null);
 
         return detailDto;
     }
 
-    // 💡 NEW: ต้องเพิ่มเมธอด toDetailDto ใน HousekeeperMapper (ดูส่วนที่ 3)
-
     @Override
     @Transactional
     public HousekeeperDTO saveHousekeeper(HousekeeperDTO housekeeperDto) {
-        // ... (โค้ด saveHousekeeper เหมือนเดิม)
         if (housekeeperDto.getPerson() != null && housekeeperDto.getPerson().getLogin() != null) {
             String username = housekeeperDto.getPerson().getLogin().getUsername();
 
@@ -143,8 +140,6 @@ public class HousekeeperServiceImpl implements HousekeeperService {
         return housekeeperMapper.toDto(transformedHousekeeper);
     }
 
-    // ... (เมธอด updateHousekeeper, deleteHousekeeper, calculateAndSetAverageRating, addBalance, deductBalance, getHousekeepersByStatus, getNotVerifiedOrNullStatusHousekeepers เหมือนเดิม)
-
     @Override
     @Transactional
     public HousekeeperDTO updateHousekeeper(int id, HousekeeperDTO housekeeperDto) {
@@ -166,7 +161,6 @@ public class HousekeeperServiceImpl implements HousekeeperService {
         // 2. อัปเดตข้อมูล Housekeeper หลัก
         existingHousekeeper.setStatusVerify(Housekeeper.VerifyStatus.valueOf(housekeeperDto.getStatusVerify()));
         existingHousekeeper.setDailyRate(housekeeperDto.getDailyRate());
-        // อัปเดตฟิลด์อื่นๆ เช่น balance ถ้าจำเป็น
 
         Housekeeper updatedHousekeeper = housekeeperRepository.save(existingHousekeeper);
         Housekeeper transformedHousekeeper = transformHousekeeperUrls(updatedHousekeeper);
@@ -238,7 +232,6 @@ public class HousekeeperServiceImpl implements HousekeeperService {
     @Transactional(readOnly = true)
     public List<HousekeeperDTO> getHousekeepersByStatus(String status) {
         List<Housekeeper> entities = housekeeperRepository.findByStatusVerifyWithDetails(status);
-
         return entities.stream()
                 .map(this::transformHousekeeperUrls)
                 .map(housekeeperMapper::toDto)

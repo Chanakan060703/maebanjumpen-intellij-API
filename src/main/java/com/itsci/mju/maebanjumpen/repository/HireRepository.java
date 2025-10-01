@@ -19,19 +19,21 @@ public interface HireRepository extends JpaRepository<Hire, Integer> {
             "LEFT JOIN FETCH h.housekeeper hk " +
             "LEFT JOIN FETCH hk.person hkp " +
             "LEFT JOIN FETCH h.skillType st " +
-            "LEFT JOIN FETCH h.additionalSkillTypeIds " +
-            "LEFT JOIN FETCH h.review r")
+//            "LEFT JOIN FETCH h.additionalSkillTypeIds " +
+            "LEFT JOIN FETCH h.review r " + // ⭐️ FIX: เพิ่ม Space ที่นี่แล้ว
+            "LEFT JOIN FETCH h.progressionImageUrls") // ⭐️ FIX: ย้าย progressionImageUrls ขึ้นมาก่อน review
     List<Hire> findAllWithDetails();
 
     // Query เพื่อดึงข้อมูล Hire โดยใช้ hireId
+    // 💡 เมธอดนี้ถูกต้องแล้วเนื่องจากมีการเว้นวรรค
     @Query("SELECT DISTINCT h FROM Hire h " +
             "LEFT JOIN FETCH h.hirer hr " +
             "LEFT JOIN FETCH hr.person hrp " +
             "LEFT JOIN FETCH h.housekeeper hk " +
             "LEFT JOIN FETCH hk.person hkp " +
             "LEFT JOIN FETCH h.skillType st " +
-            "LEFT JOIN FETCH h.additionalSkillTypeIds " +
             "LEFT JOIN FETCH h.review r " +
+            "LEFT JOIN FETCH h.progressionImageUrls " +
             "WHERE h.hireId = :id")
     Optional<Hire> fetchByIdWithAllDetails(@Param("id") Integer id);
 
@@ -42,8 +44,9 @@ public interface HireRepository extends JpaRepository<Hire, Integer> {
             "LEFT JOIN FETCH h.housekeeper hk " +
             "LEFT JOIN FETCH hk.person hkp " +
             "LEFT JOIN FETCH h.skillType st " +
-            "LEFT JOIN FETCH h.additionalSkillTypeIds " +
-            "LEFT JOIN FETCH h.review r " +
+//            "LEFT JOIN FETCH h.additionalSkillTypeIds " +
+            "LEFT JOIN FETCH h.review r " + // ⭐️ FIX: เพิ่ม Space ที่นี่
+            "LEFT JOIN FETCH h.progressionImageUrls " + // ⭐️ FIX: เพิ่ม Space นำหน้า 'WHERE'
             "WHERE hr.id = :hirerId")
     List<Hire> findByHirerIdWithDetails(@Param("hirerId") Integer hirerId);
 
@@ -54,14 +57,15 @@ public interface HireRepository extends JpaRepository<Hire, Integer> {
             "LEFT JOIN FETCH h.housekeeper hk " +
             "LEFT JOIN FETCH hk.person hkp " +
             "LEFT JOIN FETCH h.skillType st " +
-            "LEFT JOIN FETCH h.additionalSkillTypeIds " +
-            "LEFT JOIN FETCH h.review r " +
+//            "LEFT JOIN FETCH h.additionalSkillTypeIds " +
+            "LEFT JOIN FETCH h.review r " + // ⭐️ FIX: เพิ่ม Space ที่นี่
+            "LEFT JOIN FETCH h.progressionImageUrls " + // ⭐️ FIX: เพิ่ม Space นำหน้า 'WHERE'
             "WHERE hk.id = :housekeeperId")
     List<Hire> findByHousekeeperIdWithDetails(@Param("housekeeperId") Integer housekeeperId);
 
     /**
      * 💡 NEW QUERY METHOD: ดึงงานจ้างตาม Housekeeper ID และ Job Status (พร้อมรายละเอียดทั้งหมด)
-     * ใช้สำหรับดึง 'Jobs Done' และ Reviews
+     * 💡 เมธอดนี้ถูกต้องแล้วเนื่องจากมีการเว้นวรรค
      */
     @Query("SELECT DISTINCT h FROM Hire h " +
             "LEFT JOIN FETCH h.hirer hr " +
@@ -69,8 +73,8 @@ public interface HireRepository extends JpaRepository<Hire, Integer> {
             "LEFT JOIN FETCH h.housekeeper hk " +
             "LEFT JOIN FETCH hk.person hkp " +
             "LEFT JOIN FETCH h.skillType st " +
-            "LEFT JOIN FETCH h.additionalSkillTypeIds " +
             "LEFT JOIN FETCH h.review r " +
+            "LEFT JOIN FETCH h.progressionImageUrls " +
             "WHERE hk.id = :housekeeperId AND h.jobStatus = :jobStatus")
     List<Hire> findByHousekeeperIdAndJobStatusWithDetails(@Param("housekeeperId") Integer housekeeperId, @Param("jobStatus") String jobStatus);
 }

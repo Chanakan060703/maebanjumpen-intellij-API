@@ -31,28 +31,24 @@ public class Report {
 
     // ----------------- RELATIONSHIPS -----------------
 
-    /** ผู้รายงาน (อาจเป็น Hirer หรือ Housekeeper) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id")
     private PartyRole reporter;
 
-    /** ฝั่งผู้ว่าจ้าง (Hirer) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hirer_id")
     private Member hirer;
 
-    /** ฝั่งแม่บ้าน (Housekeeper) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "housekeeper_id")
     private Member housekeeper;
 
-    /** โทษที่ได้รับ (ถ้ามี) */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "penalty_id")
     private Penalty penalty;
 
-    /** ผูกกับงานจ้าง (ต้องมีเสมอ) */
+
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hire_id", unique = true, nullable = false)
+    @JoinColumn(name = "hire_id", nullable = false)
     private Hire hire;
 }

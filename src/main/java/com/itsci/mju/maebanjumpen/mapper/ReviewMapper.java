@@ -4,19 +4,18 @@ import com.itsci.mju.maebanjumpen.dto.ReviewDTO;
 import com.itsci.mju.maebanjumpen.model.Review;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
-
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {HirerMapper.class, PersonMapper.class /* และ Mapper อื่นๆ ที่ Review อาจต้องใช้ */})
 public interface ReviewMapper {
 
-    ReviewMapper INSTANCE = Mappers.getMapper(ReviewMapper.class);
 
-    @Mapping(source = "hire.hireId", target = "hireId")
+    @Mapping(target = "hirerPictureUrl", source = "hire.hirer.person.pictureUrl")
+    @Mapping(target = "hirerFirstName", source = "hire.hirer.person.firstName")
+    @Mapping(target = "hirerLastName", source = "hire.hirer.person.lastName")
+    @Mapping(target = "hireId", source = "hire.hireId")
     ReviewDTO toDto(Review review);
 
-    @Mapping(source = "hireId", target = "hire.hireId")
     Review toEntity(ReviewDTO reviewDto);
 
     List<ReviewDTO> toDtoList(List<Review> reviews);

@@ -47,7 +47,7 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional
     public ReviewDTO saveReview(ReviewDTO reviewDto) {
 
-        Integer hireId = reviewDto.getHireId();
+        Integer hireId = reviewDto.getHireId(); // ใช้ getHireId() โดยตรง
         if (hireId == null) {
             throw new IllegalArgumentException("Hire ID is required for saving a review.");
         }
@@ -123,14 +123,16 @@ public class ReviewServiceImpl implements ReviewService {
 
 
         // 2. การจัดการ Hire ID (ผูก Hire ใหม่ ถ้ามีการเปลี่ยนแปลง)
-        if (reviewDto.getHireId() != null) {
-            if (existingReview.getHire() == null || !existingReview.getHire().getHireId().equals(reviewDto.getHireId())) {
+        Integer newHireId = reviewDto.getHireId(); // ใช้ getHireId() โดยตรง
+
+        if (newHireId != null) {
+            if (existingReview.getHire() == null || !existingReview.getHire().getHireId().equals(newHireId)) {
                 // Fetch และผูก Hire Entity ใหม่
-                Hire newHire = hireRepository.findById(reviewDto.getHireId())
-                        .orElseThrow(() -> new RuntimeException("Hire with ID " + reviewDto.getHireId() + " not found"));
+                Hire newHire = hireRepository.findById(newHireId)
+                        .orElseThrow(() -> new RuntimeException("Hire with ID " + newHireId + " not found"));
                 existingReview.setHire(newHire);
             }
-        } else if (reviewDto.getHireId() == null) {
+        } else if (newHireId == null) {
             existingReview.setHire(null);
         }
 

@@ -9,4 +9,5 @@ public interface SkillLevelTierService {
     SkillLevelTierDTO createSkillLevelTier(SkillLevelTierDTO skillLevelTierDTO);
     SkillLevelTierDTO updateSkillLevelTier(Integer id, SkillLevelTierDTO skillLevelTierDTO);
     void deleteSkillLevelTier(Integer id);
+
 }

@@ -1,6 +1,7 @@
 package com.itsci.mju.maebanjumpen.controller;
 
 import com.itsci.mju.maebanjumpen.dto.TransactionDTO;
+import com.itsci.mju.maebanjumpen.model.Member; // 💡 เพิ่ม Import สำหรับ Member model
 import com.itsci.mju.maebanjumpen.service.MemberService;
 import com.itsci.mju.maebanjumpen.service.OmiseService;
 import com.itsci.mju.maebanjumpen.service.TransactionService;
@@ -11,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -25,17 +25,20 @@ public class TransactionController {
     private final ObjectMapper objectMapper;
 
     // ------------------------------------------------------------------
-    // GET MAPPINGS (เหมือนเดิม)
+    // GET MAPPINGS
     // ------------------------------------------------------------------
 
     @GetMapping
     public ResponseEntity<List<TransactionDTO>> getAllTransactions() {
+        // Service (TransactionServiceImpl) เป็นผู้รับผิดชอบในการส่งคืน TransactionDTO
+        // ที่มี Nested Member object (พร้อมชื่อและรูปภาพ) ครบถ้วน
         List<TransactionDTO> transactions = transactionService.getAllTransactions();
         return ResponseEntity.ok(transactions);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<TransactionDTO> getTransactionById(@PathVariable Integer id) {
+        // Service ใช้ @EntityGraph และ Hibernate.initialize เพื่อให้แน่ใจว่า Member/Person ถูกโหลด
         Optional<TransactionDTO> transaction = transactionService.getTransactionById(id);
         return transaction.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -67,12 +70,13 @@ public class TransactionController {
     }
 
     // ------------------------------------------------------------------
-    // POST/PUT/PATCH/DELETE MAPPINGS (เหมือนเดิม)
+    // POST/PUT/PATCH/DELETE MAPPINGS
     // ------------------------------------------------------------------
 
     @PostMapping // Create
     public ResponseEntity<TransactionDTO> createTransaction(@RequestBody TransactionDTO transactionDto) {
         try {
+            // Service จะใช้ memberId ใน DTO เพื่อไปหา Member Entity ก่อน Save
             TransactionDTO savedTransaction = transactionService.saveTransaction(transactionDto);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedTransaction);
         } catch (RuntimeException e) {
@@ -140,7 +144,7 @@ public class TransactionController {
     }
 
     // ------------------------------------------------------------------
-    // QR Code Generation (ส่วนที่ได้รับการแก้ไข)
+    // QR Code Generation
     // ------------------------------------------------------------------
 
     @PostMapping("/qrcode/deposit")
@@ -193,15 +197,22 @@ public class TransactionController {
         try {
             // 4. สร้าง DTO สำหรับ Transaction ใหม่
             depositTransactionDto = new TransactionDTO();
-            depositTransactionDto.setMemberId(memberId);
+
+            // 🚨 แก้ไข: เนื่องจาก TransactionDTO ไม่มี setMemberId() แล้ว
+            // ต้องสร้าง Member object ชั่วคราวที่มี ID เพื่อ set ลงใน DTO แทน
+            Member memberStub = new Member();
+            // Assuming Member model uses 'id' as primary key field
+            memberStub.setId(memberId);
+            depositTransactionDto.setMember(memberStub);
+
             depositTransactionDto.setTransactionType("DEPOSIT");
             depositTransactionDto.setTransactionAmount(amount);
             depositTransactionDto.setTransactionStatus("Pending Payment");
 
-            // 5. Save Transaction เพื่อให้ได้ ID (Log ยืนยันว่าสำเร็จ)
+            // 5. Save Transaction เพื่อให้ได้ ID (Service จะคืน DTO ที่มี nested Member object แล้ว)
             savedTransactionDto = transactionService.saveTransaction(depositTransactionDto);
 
-            // 6. เรียก OmiseService (Log ยืนยันว่าสำเร็จ)
+            // 6. เรียก OmiseService
             Map<String, String> omiseQrResponse = omiseService.createPromptPayQRCode(
                     amount,
                     String.valueOf(savedTransactionDto.getTransactionId())
@@ -210,25 +221,18 @@ public class TransactionController {
             if (omiseQrResponse != null && omiseQrResponse.containsKey("qrCodeImageBase64")) {
                 String svgBase64 = omiseQrResponse.get("qrCodeImageBase64");
 
-                // 7. Update Transaction Status: QR Generated (🎯 จุดแก้ไขปัญหา 400)
+                // 7. Update Transaction Status: QR Generated
                 savedTransactionDto.setTransactionStatus("QR Generated");
 
-                // 💥 FIX: รับประกันว่า memberId ไม่หายไปก่อนบันทึกครั้งที่ 2
-                // (ใช้ตัวแปร memberId ที่ดึงมาจาก Request Body)
-                if (savedTransactionDto.getMemberId() == null) {
-                    savedTransactionDto.setMemberId(memberId);
-                }
-
-                // Save the updated transaction (Log น่าจะผ่านจุดนี้แล้ว)
                 transactionService.saveTransaction(savedTransactionDto);
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("transactionId", savedTransactionDto.getTransactionId());
                 response.put("qrCodeImageBase64", svgBase64);
 
-                return ResponseEntity.ok(response); // ส่ง 200 OK กลับไป
+                return ResponseEntity.ok(response);
             } else {
-                // 8. Handle Omise Failure (API Success แต่ไม่มี QR Data)
+                // 8. Handle Omise Failure
                 if (savedTransactionDto != null) {
                     savedTransactionDto.setTransactionStatus("Failed");
                     transactionService.saveTransaction(savedTransactionDto);
@@ -237,16 +241,12 @@ public class TransactionController {
                         .body(Map.of("error", "Failed to generate QR Code from Omise API or no QR data returned."));
             }
         } catch (IllegalArgumentException e) {
-            // 9. Handle OmiseService/TransactionService Error (เช่น Minimum amount, Invalid Member ID)
-            if (savedTransactionDto != null) {
+            // 9. Handle OmiseService/TransactionService Error
+            TransactionDTO failedDto = (savedTransactionDto != null) ? savedTransactionDto : depositTransactionDto;
+            if (failedDto != null && failedDto.getTransactionId() != null) {
                 try {
-                    savedTransactionDto.setTransactionStatus("Failed");
-                    transactionService.saveTransaction(savedTransactionDto);
-                } catch (Exception ex) { /* ignore secondary save error */ }
-            } else if (depositTransactionDto != null && depositTransactionDto.getTransactionId() != null) {
-                try {
-                    depositTransactionDto.setTransactionStatus("Failed");
-                    transactionService.saveTransaction(depositTransactionDto);
+                    failedDto.setTransactionStatus("Failed");
+                    transactionService.saveTransaction(failedDto);
                 } catch (Exception ex) { /* ignore secondary save error */ }
             }
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

@@ -22,5 +22,10 @@ public interface ReportService {
     Optional<ReportDTO> findByPenaltyId(Integer penaltyId);
     Optional<ReportDTO> findLatestReportWithPenaltyByPersonId(Integer personId); // ยังคงเหมือนเดิม
 
+    // ✅ เพิ่มเมธอดสำหรับค้นหารายงานโดย Hire ID และ Reporter ID
+    Optional<ReportDTO> findByHireIdAndReporterId(Integer hireId, Integer reporterId);
+
+    // ✅ [ใหม่] เมธอดสำหรับอัปเดตสถานะบัญชี (เรียกใช้ PersonService ภายใน)
+    void updateUserAccountStatus(int personId, boolean isBanned);
 
 }

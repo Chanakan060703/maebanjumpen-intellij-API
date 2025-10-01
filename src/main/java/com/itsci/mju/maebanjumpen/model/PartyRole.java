@@ -17,6 +17,7 @@ import lombok.EqualsAndHashCode;
 @DiscriminatorColumn(name = "DTYPE", discriminatorType = DiscriminatorType.STRING)
 @NoArgsConstructor
 // ❌ ลบ @AllArgsConstructor ออก (ถ้ามี)
+//@Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @JsonTypeInfo(

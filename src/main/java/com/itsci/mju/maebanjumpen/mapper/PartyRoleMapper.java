@@ -1,10 +1,10 @@
-// File: src/main/java/com/itsci/mju/maebanjumpen/mapper/PartyRoleMapper.java
 package com.itsci.mju.maebanjumpen.mapper;
 
 import com.itsci.mju.maebanjumpen.dto.*;
 import com.itsci.mju.maebanjumpen.model.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.hibernate.Hibernate; // <-- IMPORT: นำเข้ายูทิลิตีของ Hibernate เพื่อแกะพร็อกซี
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,14 +19,19 @@ public abstract class PartyRoleMapper {
     public PartyRoleDTO toDto(PartyRole entity) {
         if (entity == null) return null;
 
-        // ตรวจสอบชนิดของ Entity และเรียกใช้เมธอดเฉพาะของ Subclass
-        if (entity instanceof Admin admin) return toAdminDto(admin);
-        if (entity instanceof AccountManager accountManager) return toAccountManagerDto(accountManager);
-        if (entity instanceof Housekeeper housekeeper) return toHousekeeperDto(housekeeper);
-        if (entity instanceof Hirer hirer) return toHirerDto(hirer);
-        if (entity instanceof Member member) return toMemberDto(member);
+        // *** FIX: การแก้ไขที่สำคัญเพื่อจัดการกับ Hibernate Proxy ***
+        // แกะพร็อกซีของ Hibernate ก่อนตรวจสอบชนิดของ Entity (unproxy the entity).
+        PartyRole unproxiedEntity = (PartyRole) Hibernate.unproxy(entity);
 
-        throw new IllegalArgumentException("Cannot map unknown PartyRole type: " + entity.getClass().getSimpleName());
+        // ตรวจสอบชนิดของ Entity และเรียกใช้เมธอดเฉพาะของ Subclass
+        if (unproxiedEntity instanceof Admin admin) return toAdminDto(admin);
+        if (unproxiedEntity instanceof AccountManager accountManager) return toAccountManagerDto(accountManager);
+        if (unproxiedEntity instanceof Housekeeper housekeeper) return toHousekeeperDto(housekeeper);
+        if (unproxiedEntity instanceof Hirer hirer) return toHirerDto(hirer);
+        if (unproxiedEntity instanceof Member member) return toMemberDto(member);
+
+        // ใช้ unproxiedEntity ในข้อความข้อผิดพลาด
+        throw new IllegalArgumentException("Cannot map unknown PartyRole type: " + unproxiedEntity.getClass().getSimpleName());
     }
 
     /**

@@ -15,12 +15,7 @@ import java.util.List;
 @RequiredArgsConstructor // ⬅️ ใช้ Constructor Injection
 public class ReviewController {
 
-    // ⬅️ เหลือแค่ ReviewService ที่จำเป็นเท่านั้น
     private final ReviewService reviewService;
-
-    // ------------------------------------------------------------------
-    // GET MAPPINGS (ใช้ DTO ทั้งหมด)
-    // ------------------------------------------------------------------
 
     @GetMapping(produces = "application/json;charset=UTF-8")
     public ResponseEntity<List<ReviewDTO>> getAllReviews() {
@@ -45,45 +40,24 @@ public class ReviewController {
         if (review == null) {
             return ResponseEntity.notFound().build();
         }
-        // หรือถ้าต้องการให้เมธอดนี้คืนค่า List ตามโค้ดเดิม
-        /*
-        List<ReviewDTO> reviews = reviewService.getReviewsByHireId(hireId);
-        if (reviews.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(reviews.get(0)); // คืนค่าตัวแรก
-        */
         return ResponseEntity.ok(review);
     }
-
-    // ------------------------------------------------------------------
-    // POST MAPPING (ใช้ DTO และย้ายตรรกะไป Service)
-    // ------------------------------------------------------------------
 
     @PostMapping(produces = "application/json;charset=UTF-8")
     public ResponseEntity<ReviewDTO> createReview(@RequestBody ReviewDTO reviewDto) { // ⬅️ รับ ReviewDTO
         try {
-            // ⬅️ เรียกใช้ Service เท่านั้น ตรรกะการตรวจสอบทั้งหมดอยู่ใน Service
             ReviewDTO savedReview = reviewService.saveReview(reviewDto);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedReview);
         } catch (IllegalArgumentException e) {
-            // กรณี Hire ID หายไป
             return ResponseEntity.badRequest().body(null);
         } catch (IllegalStateException e) {
-            // กรณีมีการ Review ซ้ำ (Conflict)
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         } catch (RuntimeException e) {
-            // กรณี Hire Not Found
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error creating review", e);
         }
     }
-
-    // ------------------------------------------------------------------
-    // PUT MAPPING (ใช้ DTO และย้ายตรรกะไป Service)
-    // ------------------------------------------------------------------
-
     @PutMapping(value = "/{id}", produces = "application/json;charset=UTF-8")
     public ResponseEntity<ReviewDTO> updateReview(@PathVariable int id, @RequestBody ReviewDTO reviewDto) { // ⬅️ รับ ReviewDTO
         try {
@@ -98,13 +72,8 @@ public class ReviewController {
         }
     }
 
-    // ------------------------------------------------------------------
-    // DELETE MAPPING (ใช้ DTO และย้ายตรรกะไป Service)
-    // ------------------------------------------------------------------
-
     @DeleteMapping(value = "/{id}", produces = "application/json;charset=UTF-8")
     public ResponseEntity<Void> deleteReview(@PathVariable int id) {
-        // ⬅️ ตรรกะการตรวจสอบและคำนวณเรตติ้งหลังลบ ถูกย้ายไปอยู่ใน Service
         reviewService.deleteReview(id);
         return ResponseEntity.noContent().build();
     }

@@ -27,7 +27,7 @@ public class Housekeeper extends Member {
     private Double rating = 0.0;
 
     @Column(name = "daily_rate")
-    private Double dailyRate = 0.0;
+    private String dailyRate = "0.0"; // หรือค่าเริ่มต้นที่เหมาะสมกับ String
 
     @OneToMany(mappedBy = "housekeeper", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude

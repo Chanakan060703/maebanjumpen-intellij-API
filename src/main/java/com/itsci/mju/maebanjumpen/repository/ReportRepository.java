@@ -26,6 +26,8 @@ public interface ReportRepository extends JpaRepository<Report, Integer> {
             "ORDER BY r.reportDate DESC")
     List<Report> findReportsWithPenaltyByPersonId(@Param("personId") Integer personId);
 
-    // ✅ แก้ไขแล้ว: ใช้ findBy + ชื่อ Entity + _ + ชื่อ ID
-    Optional<Report> findByHire_HireId(Integer hireId); // ⬅️ ถูกต้อง
+    // 🛑 แก้ไข: จาก Optional<Report> เป็น List<Report> เพราะ Hire สามารถมีได้หลาย Report (ManyToOne)
+    List<Report> findByHire_HireId(Integer hireId);
+
+    Optional<Report> findByHire_HireIdAndReporter_Id(Integer hireId, Integer reporterId);
 }

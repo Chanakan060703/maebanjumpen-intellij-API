@@ -16,4 +16,5 @@ public class HousekeeperDetailDTO extends HousekeeperDTO {
     private List<HireDTO> hires;
     private int jobsCompleted; // 🎯 รับจำนวนงานที่เสร็จสิ้น
     private List<ReviewDTO> reviews; // 🎯 รับรายการรีวิว
+
 }

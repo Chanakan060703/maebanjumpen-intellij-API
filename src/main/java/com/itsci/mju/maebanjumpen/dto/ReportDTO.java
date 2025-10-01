@@ -1,5 +1,6 @@
 package com.itsci.mju.maebanjumpen.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ReportDTO {
     private Integer reportId;
     private String reportTitle;
@@ -16,10 +18,9 @@ public class ReportDTO {
     private LocalDateTime reportDate;
     private String reportStatus;
 
-    // 🎯 ใช้ ID สำหรับความสัมพันธ์เมื่อเป็น Request หรือเมื่อไม่ต้องการโหลด Object เต็ม
-    private Integer reporterId; // Reporter is a PartyRole
-    private Integer hirerId; // Hirer is a Member
-    private Integer housekeeperId; // Housekeeper is a Member
-    private Integer penaltyId;
+    private PartyRoleDTO reporter;
+    private PartyRoleDTO hirer;
+    private PartyRoleDTO housekeeper;
+    private PenaltyDTO penalty;
     private Integer hireId;
 }

@@ -31,7 +31,5 @@ public class HireDTO {
 	private HousekeeperDTO housekeeper;
 	private SkillTypeDTO skillType;
 	private ReviewDTO review; // Use ReviewDTO for OneToOne
-	private List<Integer> additionalSkillTypeIds;
 
-	// ⚠️ ไม่จำเป็นต้องเพิ่ม field private ReportDTO report; เพราะเราใช้ @JsonIgnoreProperties(ignoreUnknown = true) แล้ว
 }

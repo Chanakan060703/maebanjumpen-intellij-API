@@ -66,13 +66,18 @@ public class TransactionServiceImpl implements TransactionService {
     public TransactionDTO saveTransaction(TransactionDTO transactionDto) {
 
         // 1. Validate and fetch Member ID from DTO
-        if (transactionDto.getMemberId() == null) {
-            throw new IllegalArgumentException("Member ID is required for transaction. Please provide memberId.");
+        // 🚨 FIX 1: ตรวจสอบ Member object และใช้ getMember().getId() แทน getMemberId()
+        if (transactionDto.getMember() == null || transactionDto.getMember().getId() == null) {
+            throw new IllegalArgumentException("Member ID is required for transaction. Please provide member object with ID.");
         }
 
+        // ดึง memberId ออกมาเก็บไว้เพื่อใช้ต่อ
+        Integer memberId = transactionDto.getMember().getId();
+
         // 2. Fetch the managed Member entity
-        Member existingMember = memberRepository.findById(transactionDto.getMemberId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found with ID: " + transactionDto.getMemberId()));
+        // 🚨 FIX 2: ใช้ memberId ที่ดึงจาก nested object
+        Member existingMember = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found with ID: " + memberId));
 
         // 3. Convert DTO to Entity and attach managed Member
         Transaction transaction = transactionMapper.toEntity(transactionDto);
@@ -271,6 +276,11 @@ public class TransactionServiceImpl implements TransactionService {
             Transaction transaction = optionalTransaction.get();
             String oldStatus = transaction.getTransactionStatus(); // เก็บสถานะเดิม
 
+            if (transaction.getMember() == null || transaction.getMember().getId() == null) {
+                System.err.println("Error: Member not found or invalid ID for transaction ID: " + ourTransactionId);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Member associated with transaction not found.");
+            }
+
             if ("successful".equals(chargeStatus) && paid) {
                 transaction.setTransactionStatus("SUCCESS");
                 transaction.setTransactionApprovalDate(LocalDateTime.now());
@@ -288,6 +298,7 @@ public class TransactionServiceImpl implements TransactionService {
                         System.out.println("Transaction ID: " + ourTransactionId + " already processed/approved. Skipping balance update.");
                     }
                 } else {
+                    // This block is technically redundant due to the check above, but kept for safety
                     System.err.println("Error: Member not found for transaction ID: " + ourTransactionId);
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Member associated with transaction not found.");
                 }

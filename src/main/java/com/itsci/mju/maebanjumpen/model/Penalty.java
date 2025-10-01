@@ -1,7 +1,7 @@
 package com.itsci.mju.maebanjumpen.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.persistence.*; // ⬅️ เพิ่ม import ทั้งหมด
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,10 +27,7 @@ public class Penalty {
 	@Column(nullable = false)
 	private String penaltyStatus;
 
-	// ----------------- RELATIONSHIP (Inverse Side) -----------------
 
-	// ⬅️ เพิ่มความสัมพันธ์กลับไปที่ Report
-	// ใช้ mappedBy เพราะฝั่ง Report เป็นเจ้าของ JoinColumn (penalty_id)
 	@OneToOne(mappedBy = "penalty", fetch = FetchType.LAZY)
 	private Report report;
 }

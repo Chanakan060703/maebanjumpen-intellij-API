@@ -14,7 +14,7 @@ public class HousekeeperDTO extends MemberDTO {
     private String photoVerifyUrl;
     private String statusVerify;
     private Double rating;
-    private Double dailyRate;
+    private String dailyRate;
 
     private List<Integer> hireIds;
 

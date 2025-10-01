@@ -25,7 +25,8 @@ import java.time.LocalDateTime;
                         name = "hireSubgraph",
                         attributeNodes = {
                                 @NamedAttributeNode(value = "hirer", subgraph = "hirerSubgraph"),
-                                @NamedAttributeNode(value = "housekeeper", subgraph = "housekeeperSubgraph")
+                                @NamedAttributeNode(value = "housekeeper", subgraph = "housekeeperSubgraph"),
+                                @NamedAttributeNode(value = "progressionImageUrls") // ⭐️ FIX: เพิ่ม ElementCollection นี้
                         }
                 ),
                 @NamedSubgraph(

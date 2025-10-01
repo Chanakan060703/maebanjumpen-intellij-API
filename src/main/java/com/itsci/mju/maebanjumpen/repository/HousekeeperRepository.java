@@ -34,8 +34,8 @@ public interface HousekeeperRepository extends JpaRepository<Housekeeper, Intege
             "WHERE h.id = :id")
     Optional<Housekeeper> findByIdWithAllDetails(@Param("id") int id);
 
-
-    @Query("SELECT AVG(r.score) FROM Review r JOIN r.hire h WHERE h.housekeeper.id = :housekeeperId AND h.jobStatus = 'Completed'")
+    // 🎯 แก้ไข: เปลี่ยนเงื่อนไข WHERE จาก h.jobStatus = 'Completed' เป็นการรวม 'Completed' และ 'Reviewed'
+    @Query("SELECT AVG(r.score) FROM Review r JOIN r.hire h WHERE h.housekeeper.id = :housekeeperId AND (h.jobStatus = 'Completed' OR h.jobStatus = 'Reviewed')")
     Double calculateAverageRatingByHousekeeperId(@Param("housekeeperId") Integer housekeeperId);
 
     @Query("SELECT DISTINCT h FROM Housekeeper h " +

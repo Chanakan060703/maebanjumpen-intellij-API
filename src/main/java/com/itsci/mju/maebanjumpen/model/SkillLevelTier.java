@@ -26,4 +26,7 @@ public class SkillLevelTier {
 
         @Column(name = "max_price_per_hour_limit")
         private Double maxPricePerHourLimit;
+
+        @Column(name = "min_price_per_hour_limit")
+        private Double minPricePerHourLimit;
 }
