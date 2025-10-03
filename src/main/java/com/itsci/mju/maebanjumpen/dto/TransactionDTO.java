@@ -1,10 +1,9 @@
 package com.itsci.mju.maebanjumpen.dto;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-// 🚨 แก้ไข: เปลี่ยน Import จาก AspectJ ไปเป็น Model ของคุณ
-import com.itsci.mju.maebanjumpen.model.Member;
 
 import java.time.LocalDateTime;
 
@@ -18,8 +17,8 @@ public class TransactionDTO {
     private LocalDateTime transactionDate;
     private String transactionStatus;
 
-    // 🚨 ใช้ Member Object ของ Model
-    private Member member;
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
+    private MemberDTO member;
 
     private String prompayNumber;
     private String bankAccountNumber;

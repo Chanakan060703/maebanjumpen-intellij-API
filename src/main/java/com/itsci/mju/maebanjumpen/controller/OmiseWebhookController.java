@@ -16,14 +16,8 @@ public class OmiseWebhookController {
 
     private final ObjectMapper objectMapper;
     private final TransactionService transactionService; // ⬅️ Inject TransactionService
-
-    // ❌ ลบ Repositories ออกจาก Controller
-    // private final TransactionRepository transactionRepository;
-    // private final MemberRepository memberRepository;
-
     @PostMapping
     public ResponseEntity<String> handleOmiseWebhook(@RequestBody String payload) {
-        // Log ข้อมูลที่ได้รับ (สามารถย้ายไปใน Service ได้ถ้าต้องการ)
         System.out.println("Received Omise Webhook Payload: " + payload);
 
         try {
@@ -31,7 +25,6 @@ public class OmiseWebhookController {
             String eventType = root.path("key").asText();
 
             if ("charge.complete".equals(eventType)) {
-                // ➡️ ส่งตรรกะการประมวลผลทั้งหมดเข้าสู่ Service Layer
                 transactionService.processOmiseChargeComplete(root);
                 return new ResponseEntity<>("Webhook processed successfully.", HttpStatus.OK);
 

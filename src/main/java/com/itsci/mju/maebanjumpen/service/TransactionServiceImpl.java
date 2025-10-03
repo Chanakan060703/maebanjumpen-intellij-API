@@ -88,6 +88,24 @@ public class TransactionServiceImpl implements TransactionService {
             transaction.setTransactionDate(LocalDateTime.now());
         }
 
+        // 4.5. 🎯 ADD WITHDRAWAL VALIDATION LOGIC HERE (ปรับปรุงแล้ว)
+        // ตรวจสอบว่าถ้าเป็นรายการถอนเงิน ต้องมีรายละเอียดปลายทาง
+        if ("Withdrawal".equalsIgnoreCase(transaction.getTransactionType())) {
+            // A. ตรวจสอบ Prompay Number (ต้องมีค่าและไม่ว่างเปล่า)
+            boolean hasPrompay = transaction.getPrompayNumber() != null && !transaction.getPrompayNumber().trim().isEmpty();
+
+            // B. ตรวจสอบรายละเอียดบัญชีธนาคาร (ต้องมีทั้งเลขที่และชื่อบัญชี และไม่ว่างเปล่า)
+            boolean hasBankDetails = (transaction.getBankAccountNumber() != null && !transaction.getBankAccountNumber().trim().isEmpty()) &&
+                    (transaction.getBankAccountName() != null && !transaction.getBankAccountName().trim().isEmpty());
+
+            // ต้องมีอย่างน้อยหนึ่งช่องทางที่สมบูรณ์ (Prompay หรือ Bank Details)
+            if (!hasPrompay && !hasBankDetails) {
+                // Throwing IllegalArgumentException will result in 400 BAD_REQUEST in the Controller
+                throw new IllegalArgumentException("Withdrawal transaction requires either Prompay number or complete Bank Account details (number and name).");
+            }
+        }
+        // 🎯 END OF WITHDRAWAL VALIDATION
+
         // 5. Determine oldStatus for update scenarios
         String oldStatus = null;
         if (transaction.getTransactionId() != null) {
@@ -143,6 +161,7 @@ public class TransactionServiceImpl implements TransactionService {
                         savedTransaction.setTransactionStatus("Failed");
                         savedTransaction.setTransactionApprovalDate(LocalDateTime.now());
                         transactionRepository.save(savedTransaction);
+                        // Using ResponseStatusException here will be caught by the @Transactional block and rollback
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient funds for withdrawal (" + (currentBalance != null ? currentBalance : 0.0) + " < " + transactionAmount + ")");
                     }
                 } else if ("Deposit".equalsIgnoreCase(savedTransaction.getTransactionType())) {

@@ -94,4 +94,18 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
+
+    @GetMapping("/check-duplicate/hire/{hireId}/reporter/{reporterId}")
+    public ResponseEntity<Boolean> checkDuplicateReport(
+            @PathVariable Integer hireId,
+            @PathVariable Integer reporterId) {
+
+        // ใช้เมธอด findByHireIdAndReporterId ที่คุณ implement ไว้ใน ReportService
+        Optional<ReportDTO> optionalReport = reportService.findByHireIdAndReporterId(hireId, reporterId);
+
+        // คืนค่า true หากพบรายงาน (หมายความว่าถูกรายงานแล้ว)
+        // คืนค่า false หากไม่พบรายงาน
+        return ResponseEntity.ok(optionalReport.isPresent());
+    }
+
 }

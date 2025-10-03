@@ -48,7 +48,7 @@ public class Report {
     private Penalty penalty;
 
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hire_id", nullable = false)
     private Hire hire;
 }

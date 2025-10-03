@@ -3,9 +3,11 @@ package com.itsci.mju.maebanjumpen.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-// 🚨 การแก้ไข: เปลี่ยนจากระบุ Getter/Setter เป็นรายฟิลด์ มาใช้ @Data
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,8 +25,7 @@ import lombok.*;
         @JsonSubTypes.Type(value = MemberDTO.class, name = "member")
 })
 public abstract class PartyRoleDTO {
-
-    // 💡 การแก้ไข: ลบ @Getter และ @Setter ที่ซ้ำซ้อนออก และปล่อยให้ @Data จัดการ
+    @EqualsAndHashCode.Include // เพิ่ม EqualsAndHashCode.Include ที่ id เพื่อให้ Lombok ใช้งาน
     private Integer id;
     private PersonDTO person;
     private String username;

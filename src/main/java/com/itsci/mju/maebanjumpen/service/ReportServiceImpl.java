@@ -25,7 +25,10 @@ public class ReportServiceImpl implements ReportService {
     private final PenaltyRepository penaltyRepository;
     private final HireRepository hireRepository;
     private final ReportMapper reportMapper;
-    private final PersonService personService; // ✅ [ใหม่] เพิ่ม PersonService เพื่อใช้ในการจัดการสถานะบัญชี
+    private final PersonService personService;
+
+    // 🎯 Service สำหรับการจัดการการเปลี่ยนสถานะตามเวลา
+    private final HireStatusUpdateService hireStatusUpdateService;
 
     private void initializeReport(Report report) {
         if (report == null) return;
@@ -64,12 +67,10 @@ public class ReportServiceImpl implements ReportService {
     @Override
     @Transactional
     public ReportDTO createReport(ReportDTO reportDto) {
-        // 1. ตรวจสอบว่ามีการรายงานซ้ำหรือไม่ (ต้องดึง Hire Entity มาเทียบ)
         if (reportDto.getHireId() == null) {
             throw new IllegalArgumentException("Hire ID is required.");
         }
 
-        // 🎯 ดึง ID จาก Object ที่ Client ส่งมา
         Integer reporterId = reportDto.getReporter() != null ? reportDto.getReporter().getId() : null;
         Integer hirerId = reportDto.getHirer() != null ? reportDto.getHirer().getId() : null;
         Integer housekeeperId = reportDto.getHousekeeper() != null ? reportDto.getHousekeeper().getId() : null;
@@ -79,16 +80,12 @@ public class ReportServiceImpl implements ReportService {
             throw new IllegalArgumentException("Reporter ID is required in the reporter object.");
         }
 
-        // ✅ [จุดแก้ไข] ตรวจสอบความซ้ำซ้อน: ต้องซ้ำทั้ง Hire ID และ Reporter ID (ผู้รายงานคนเดียวกัน)
-        // Note: As the ReportRepository file is not provided, we assume the JPA method
-        // findByHire_HireIdAndReporter_Id exists, which corresponds to the SQL:
-        // WHERE r.hire.hireId = ? AND r.reporter.id = ?
+        // 🛑 ตรวจสอบการรายงานซ้ำ (นำกลับมาใช้ตามความเหมาะสม)
         if (reportRepository.findByHire_HireIdAndReporter_Id(reportDto.getHireId(), reporterId).isPresent()) {
-            // เปลี่ยนข้อความแจ้งเตือนให้ชัดเจนขึ้นสำหรับกรณีที่ผู้รายงานคนเดียวกันส่งซ้ำ
             throw new AlreadyReportedException("You have already submitted a report for this job.");
         }
+        // *หากต้องการอนุญาตให้รายงานซ้ำได้ ก็ลบบล็อกด้านบนนี้ออก*
 
-        // 2. ดึง Entity จาก ID เพื่อผูกความสัมพันธ์
         Report report = reportMapper.toEntity(reportDto);
 
         PartyRole existingReporter = partyRoleRepository.findById(reporterId)
@@ -97,21 +94,39 @@ public class ReportServiceImpl implements ReportService {
         Hire existingHire = hireRepository.findById(reportDto.getHireId())
                 .orElseThrow(() -> new IllegalArgumentException("Hire not found with ID: " + reportDto.getHireId()));
 
-        // 3. ผูกความสัมพันธ์
+        // 2. ผูก Entity
         report.setReporter(existingReporter);
-        report.setHire(existingHire); // ✅ ผูก Hire Entity
-
-        // 🚨 ใช้ ID ที่ดึงมาเพื่อดึง Entity ที่สมบูรณ์
+        report.setHire(existingHire);
         report.setHirer(hirerId != null ? hirerRepository.findById(hirerId).orElse(null) : null);
         report.setHousekeeper(housekeeperId != null ? housekeeperRepository.findById(housekeeperId).orElse(null) : null);
         report.setPenalty(penaltyId != null ? penaltyRepository.findById(penaltyId).orElse(null) : null);
 
-        // 4. Set default status
         if (report.getReportStatus() == null || report.getReportStatus().isEmpty()) {
-            report.setReportStatus("pending");
+            report.setReportStatus("pending"); // สถานะของรายงาน
         }
 
         Report savedReport = reportRepository.save(report);
+
+        // ----------------------------------------------------
+        // ✅ LOGIC การเปลี่ยนสถานะงานจ้าง (อยู่ใน Transaction เดียวกัน)
+        // ----------------------------------------------------
+
+        // 3. เปลี่ยนสถานะงานจ้าง (Hire) เป็น "Reported" ทันที
+        existingHire.setJobStatus("Reported");
+        hireRepository.save(existingHire);
+
+        System.out.println("LOG: Hire ID " + existingHire.getHireId() + " status set to 'Reported' and report saved.");
+
+
+        // 4. กำหนดเวลาเปลี่ยนสถานะกลับเป็น "Completed" ใน 3 วินาที (Task Scheduler)
+        if (existingHire.getHireId() != null) {
+            hireStatusUpdateService.scheduleStatusRevert(
+                    existingHire.getHireId(), // 1. Hire ID (Integer)
+                    3L                        // 2. Delay (long)
+            );
+        }
+        // ----------------------------------------------------
+
         initializeReport(savedReport);
         return reportMapper.toDto(savedReport);
     }
@@ -130,8 +145,6 @@ public class ReportServiceImpl implements ReportService {
         if (reportDto.getReportStatus() != null) existingReport.setReportStatus(reportDto.getReportStatus());
 
         // 2. อัปเดตความสัมพันธ์โดยใช้ Object จาก DTO
-
-        // 🚨 ดึง ID จาก Object
         Integer newReporterId = reportDto.getReporter() != null ? reportDto.getReporter().getId() : null;
         Integer newHirerId = reportDto.getHirer() != null ? reportDto.getHirer().getId() : null;
         Integer newHousekeeperId = reportDto.getHousekeeper() != null ? reportDto.getHousekeeper().getId() : null;
@@ -160,8 +173,8 @@ public class ReportServiceImpl implements ReportService {
             Penalty newPenalty = penaltyRepository.findById(newPenaltyId)
                     .orElseThrow(() -> new IllegalArgumentException("Penalty not found with ID: " + newPenaltyId));
             existingReport.setPenalty(newPenalty);
-        } else if (reportDto.getPenalty() == null) { // ตรวจสอบว่า client ส่ง null มาหรือไม่
-            existingReport.setPenalty(null); // อนุญาตให้ล้าง Penalty ได้
+        } else if (reportDto.getPenalty() == null) {
+            existingReport.setPenalty(null);
         }
 
         Report savedReport = reportRepository.save(existingReport);
@@ -205,29 +218,20 @@ public class ReportServiceImpl implements ReportService {
         return Optional.empty();
     }
 
-    // ✅ เพิ่ม implementation ของเมธอดใหม่
     @Override
     public Optional<ReportDTO> findByHireIdAndReporterId(Integer hireId, Integer reporterId) {
         if (hireId == null || reporterId == null) {
             return Optional.empty();
         }
-        // As a placeholder, we assume the repository method exists to find by both IDs
         Optional<Report> reportOptional = reportRepository.findByHire_HireIdAndReporter_Id(hireId, reporterId);
         reportOptional.ifPresent(this::initializeReport);
         return reportOptional.map(reportMapper::toDto);
     }
 
-    /**
-     * ✅ [ใหม่] เมธอดสำหรับอัปเดตสถานะบัญชีของผู้ใช้ (ban/unban)
-     * โดยส่งต่อการทำงานไปยัง PersonService
-     */
     @Override
     @Transactional
     public void updateUserAccountStatus(int personId, boolean isBanned) {
-        // แปลง boolean เป็น String สถานะ
         String newStatus = isBanned ? "banned" : "active";
-
-        // เรียกใช้ PersonService ที่มีอยู่แล้วเพื่ออัปเดตสถานะจริงในตาราง Person
         personService.updateAccountStatus(personId, newStatus);
     }
 }

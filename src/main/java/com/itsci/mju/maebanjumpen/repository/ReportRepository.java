@@ -11,11 +11,8 @@ import java.util.Optional;
 
 @Repository
 public interface ReportRepository extends JpaRepository<Report, Integer> {
-
     List<Report> findByReportStatus(String reportStatus);
-
     Optional<Report> findByPenalty_PenaltyId(Integer penaltyId);
-
     @Query("SELECT r FROM Report r " +
             "LEFT JOIN r.hirer h " +
             "LEFT JOIN h.person hp " +

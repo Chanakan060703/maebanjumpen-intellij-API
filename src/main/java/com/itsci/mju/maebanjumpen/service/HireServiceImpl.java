@@ -32,8 +32,7 @@ public class HireServiceImpl implements HireService {
     private final SkillTypeRepository skillTypeRepository;
     private final HirerRepository hirerRepository;
     private final HousekeeperRepository housekeeperRepository;
-
-    // ⚠️ ไม่ต้องประกาศ HirerMapper, HousekeeperMapper ที่นี่ เพราะ HireMapper จัดการ Nested DTOs เอง
+    private final HireStatusUpdateService statusUpdateService;
 
     @Override
     @Transactional(readOnly = true)
