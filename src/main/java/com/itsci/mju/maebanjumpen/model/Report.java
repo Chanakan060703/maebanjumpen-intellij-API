@@ -35,13 +35,13 @@ public class Report {
     @JoinColumn(name = "reporter_id")
     private PartyRole reporter;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hirer_id")
-    private Member hirer;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "housekeeper_id")
-    private Member housekeeper;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "hirer_id")
+//    private Member hirer;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "housekeeper_id")
+//    private Member housekeeper;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "penalty_id")

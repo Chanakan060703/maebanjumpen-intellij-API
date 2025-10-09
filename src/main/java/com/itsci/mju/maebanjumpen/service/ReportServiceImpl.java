@@ -20,8 +20,8 @@ public class ReportServiceImpl implements ReportService {
 
     private final ReportRepository reportRepository;
     private final PartyRoleRepository partyRoleRepository;
-    private final HirerRepository hirerRepository;
-    private final HousekeeperRepository housekeeperRepository;
+    // ❌ ลบ private final HirerRepository hirerRepository;
+    // ❌ ลบ private final HousekeeperRepository housekeeperRepository;
     private final PenaltyRepository penaltyRepository;
     private final HireRepository hireRepository;
     private final ReportMapper reportMapper;
@@ -30,20 +30,32 @@ public class ReportServiceImpl implements ReportService {
     // 🎯 Service สำหรับการจัดการการเปลี่ยนสถานะตามเวลา
     private final HireStatusUpdateService hireStatusUpdateService;
 
+    /**
+     * Initializes lazy-loaded collections/associations of the Report entity.
+     * Hirer and Housekeeper are now initialized via the Hire object.
+     */
     private void initializeReport(Report report) {
         if (report == null) return;
         Hibernate.initialize(report.getReporter());
-        Hibernate.initialize(report.getHirer());
-        Hibernate.initialize(report.getHousekeeper());
+        // ❌ ลบ: report.getHirer() และ report.getHousekeeper() ถูกลบออกจาก Report Entity แล้ว
+
         Hibernate.initialize(report.getPenalty());
         Hibernate.initialize(report.getHire());
 
-        if (report.getHirer() != null && report.getHirer().getPerson() != null) {
-            Hibernate.initialize(report.getHirer().getPerson());
+        // 💡 ตรวจสอบและ Initialize Hirer/Housekeeper ผ่าน Hire object
+        if (report.getHire() != null) {
+            Hibernate.initialize(report.getHire().getHirer());
+            Hibernate.initialize(report.getHire().getHousekeeper());
+
+            // Initialize Person (หากต้องการดึงชื่อ/ข้อมูลพื้นฐาน)
+            if (report.getHire().getHirer() != null && report.getHire().getHirer().getPerson() != null) {
+                Hibernate.initialize(report.getHire().getHirer().getPerson());
+            }
+            if (report.getHire().getHousekeeper() != null && report.getHire().getHousekeeper().getPerson() != null) {
+                Hibernate.initialize(report.getHire().getHousekeeper().getPerson());
+            }
         }
-        if (report.getHousekeeper() != null && report.getHousekeeper().getPerson() != null) {
-            Hibernate.initialize(report.getHousekeeper().getPerson());
-        }
+
         if (report.getReporter() != null && report.getReporter().getPerson() != null) {
             Hibernate.initialize(report.getReporter().getPerson());
         }
@@ -67,38 +79,35 @@ public class ReportServiceImpl implements ReportService {
     @Override
     @Transactional
     public ReportDTO createReport(ReportDTO reportDto) {
-        if (reportDto.getHireId() == null) {
-            throw new IllegalArgumentException("Hire ID is required.");
+        if (reportDto.getHire() == null || reportDto.getHire().getHireId() == null) {
+            throw new IllegalArgumentException("Hire object with ID is required.");
         }
 
         Integer reporterId = reportDto.getReporter() != null ? reportDto.getReporter().getId() : null;
-        Integer hirerId = reportDto.getHirer() != null ? reportDto.getHirer().getId() : null;
-        Integer housekeeperId = reportDto.getHousekeeper() != null ? reportDto.getHousekeeper().getId() : null;
+        Integer hireId = reportDto.getHire().getHireId(); // ✅ ดึง Hire ID จาก HireDTO
         Integer penaltyId = reportDto.getPenalty() != null ? reportDto.getPenalty().getPenaltyId() : null;
 
         if (reporterId == null) {
             throw new IllegalArgumentException("Reporter ID is required in the reporter object.");
         }
 
-        // 🛑 ตรวจสอบการรายงานซ้ำ (นำกลับมาใช้ตามความเหมาะสม)
-        if (reportRepository.findByHire_HireIdAndReporter_Id(reportDto.getHireId(), reporterId).isPresent()) {
+        // 🛑 ตรวจสอบการรายงานซ้ำ
+        if (reportRepository.findByHire_HireIdAndReporter_Id(hireId, reporterId).isPresent()) {
             throw new AlreadyReportedException("You have already submitted a report for this job.");
         }
-        // *หากต้องการอนุญาตให้รายงานซ้ำได้ ก็ลบบล็อกด้านบนนี้ออก*
 
         Report report = reportMapper.toEntity(reportDto);
 
         PartyRole existingReporter = partyRoleRepository.findById(reporterId)
                 .orElseThrow(() -> new IllegalArgumentException("Reporter not found with ID: " + reporterId));
 
-        Hire existingHire = hireRepository.findById(reportDto.getHireId())
-                .orElseThrow(() -> new IllegalArgumentException("Hire not found with ID: " + reportDto.getHireId()));
+        Hire existingHire = hireRepository.findById(hireId)
+                .orElseThrow(() -> new IllegalArgumentException("Hire not found with ID: " + hireId));
 
         // 2. ผูก Entity
         report.setReporter(existingReporter);
         report.setHire(existingHire);
-        report.setHirer(hirerId != null ? hirerRepository.findById(hirerId).orElse(null) : null);
-        report.setHousekeeper(housekeeperId != null ? housekeeperRepository.findById(housekeeperId).orElse(null) : null);
+        // ❌ ลบ: report.setHirer(...) และ report.setHousekeeper(...)
         report.setPenalty(penaltyId != null ? penaltyRepository.findById(penaltyId).orElse(null) : null);
 
         if (report.getReportStatus() == null || report.getReportStatus().isEmpty()) {
@@ -121,8 +130,8 @@ public class ReportServiceImpl implements ReportService {
         // 4. กำหนดเวลาเปลี่ยนสถานะกลับเป็น "Completed" ใน 3 วินาที (Task Scheduler)
         if (existingHire.getHireId() != null) {
             hireStatusUpdateService.scheduleStatusRevert(
-                    existingHire.getHireId(), // 1. Hire ID (Integer)
-                    3L                        // 2. Delay (long)
+                    existingHire.getHireId(),
+                    3L
             );
         }
         // ----------------------------------------------------
@@ -144,12 +153,16 @@ public class ReportServiceImpl implements ReportService {
         if (reportDto.getReportDate() != null) existingReport.setReportDate(reportDto.getReportDate());
         if (reportDto.getReportStatus() != null) existingReport.setReportStatus(reportDto.getReportStatus());
 
-        // 2. อัปเดตความสัมพันธ์โดยใช้ Object จาก DTO
+        // 2. อัปเดตความสัมพันธ์
         Integer newReporterId = reportDto.getReporter() != null ? reportDto.getReporter().getId() : null;
-        Integer newHirerId = reportDto.getHirer() != null ? reportDto.getHirer().getId() : null;
-        Integer newHousekeeperId = reportDto.getHousekeeper() != null ? reportDto.getHousekeeper().getId() : null;
         Integer newPenaltyId = reportDto.getPenalty() != null ? reportDto.getPenalty().getPenaltyId() : null;
 
+        // อัปเดต Hire (ถ้ามีการส่ง HireDTO มา)
+        if (reportDto.getHire() != null && reportDto.getHire().getHireId() != null) {
+            Hire newHire = hireRepository.findById(reportDto.getHire().getHireId())
+                    .orElseThrow(() -> new IllegalArgumentException("Hire not found with ID: " + reportDto.getHire().getHireId()));
+            existingReport.setHire(newHire);
+        }
 
         if (newReporterId != null) {
             PartyRole newReporter = partyRoleRepository.findById(newReporterId)
@@ -157,17 +170,7 @@ public class ReportServiceImpl implements ReportService {
             existingReport.setReporter(newReporter);
         }
 
-        if (newHirerId != null) {
-            Hirer newHirer = hirerRepository.findById(newHirerId)
-                    .orElseThrow(() -> new IllegalArgumentException("Hirer not found with ID: " + newHirerId));
-            existingReport.setHirer(newHirer);
-        }
-
-        if (newHousekeeperId != null) {
-            Housekeeper newHousekeeper = housekeeperRepository.findById(newHousekeeperId)
-                    .orElseThrow(() -> new IllegalArgumentException("Housekeeper not found with ID: " + newHousekeeperId));
-            existingReport.setHousekeeper(newHousekeeper);
-        }
+        // ❌ ลบ: ลอจิกการอัปเดต Hirer/Housekeeper โดยตรงออก
 
         if (newPenaltyId != null) {
             Penalty newPenalty = penaltyRepository.findById(newPenaltyId)

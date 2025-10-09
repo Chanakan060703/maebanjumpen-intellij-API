@@ -19,8 +19,8 @@ public class ReportDTO {
     private String reportStatus;
 
     private PartyRoleDTO reporter;
-    private PartyRoleDTO hirer;
-    private PartyRoleDTO housekeeper;
     private PenaltyDTO penalty;
-    private Integer hireId;
+    private HireDTO hire;
+
+    // private Integer hireId;
 }

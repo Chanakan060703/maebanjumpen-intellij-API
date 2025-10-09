@@ -19,10 +19,6 @@ public class HousekeeperSkillController {
 
     private final HousekeeperSkillService housekeeperSkillService;
 
-    // ⚠️ Repository ถูกลบออก เพราะตรรกะการหา Entity ถูกย้ายไปที่ Service แล้ว
-
-    // --- GET methods (Return DTO) ---
-
     // 1.getAllHousekeeperSkills: คืนค่า List<HousekeeperDTO> ตาม Interface Service
     @GetMapping
     public ResponseEntity<List<HousekeeperDTO>> getAllHousekeeperSkills() {

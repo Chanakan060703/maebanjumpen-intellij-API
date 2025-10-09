@@ -47,7 +47,6 @@ public class SkillTypeServiceImpl implements SkillTypeService {
 
         existingSkillType.setSkillTypeName(skillTypeDto.getSkillTypeName());
         existingSkillType.setSkillTypeDetail(skillTypeDto.getSkillTypeDetail());
-        existingSkillType.setBasePricePerHour(skillTypeDto.getBasePricePerHour());
 
         SkillType updatedEntity = skillTypeRepository.save(existingSkillType);
 

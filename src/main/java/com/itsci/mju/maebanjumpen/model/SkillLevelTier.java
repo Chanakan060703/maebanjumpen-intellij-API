@@ -21,12 +21,4 @@ public class SkillLevelTier {
         @Column(name = "min_hires_for_level", nullable = false)
         private Integer minHiresForLevel;
 
-        @Column(name = "price_multiplier", nullable = false)
-        private Double priceMultiplier;
-
-        @Column(name = "max_price_per_hour_limit")
-        private Double maxPricePerHourLimit;
-
-        @Column(name = "min_price_per_hour_limit")
-        private Double minPricePerHourLimit;
 }

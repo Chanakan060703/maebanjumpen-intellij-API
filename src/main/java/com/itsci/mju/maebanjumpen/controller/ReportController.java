@@ -95,6 +95,7 @@ public class ReportController {
         }
     }
 
+//ตรวจรายงานซ้ำ
     @GetMapping("/check-duplicate/hire/{hireId}/reporter/{reporterId}")
     public ResponseEntity<Boolean> checkDuplicateReport(
             @PathVariable Integer hireId,

@@ -11,7 +11,4 @@ public class SkillLevelTierDTO {
     private Integer id;
     private String skillLevelName;
     private Integer minHiresForLevel;
-    private Double priceMultiplier;
-    private Double maxPricePerHourLimit;
-    private Double minPricePerHourLimit;
 }

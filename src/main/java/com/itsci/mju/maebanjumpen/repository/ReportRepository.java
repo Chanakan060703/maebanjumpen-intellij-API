@@ -13,12 +13,18 @@ import java.util.Optional;
 public interface ReportRepository extends JpaRepository<Report, Integer> {
     List<Report> findByReportStatus(String reportStatus);
     Optional<Report> findByPenalty_PenaltyId(Integer penaltyId);
+
+    /**
+     * Finds reports with an associated penalty for a person (either hirer or housekeeper).
+     * The join now goes through the 'hire' relationship to find the associated hirer/housekeeper.
+     */
     @Query("SELECT r FROM Report r " +
-            "LEFT JOIN r.hirer h " +
-            "LEFT JOIN h.person hp " +
-            "LEFT JOIN r.housekeeper hk " +
-            "LEFT JOIN hk.person hkp " +
-            "WHERE (hp.personId = :personId OR hkp.personId = :personId) " +
+            "JOIN r.hire h " + // 🎯 Join ผ่าน Hire
+            "LEFT JOIN h.hirer hr " + // 🎯 ดึง Hirer จาก Hire
+            "LEFT JOIN hr.person hrp " + // ดึง Person ของ Hirer
+            "LEFT JOIN h.housekeeper hk " + // 🎯 ดึง Housekeeper จาก Hire
+            "LEFT JOIN hk.person hkp " + // ดึง Person ของ Housekeeper
+            "WHERE (hrp.personId = :personId OR hkp.personId = :personId) " +
             "AND r.penalty IS NOT NULL " +
             "ORDER BY r.reportDate DESC")
     List<Report> findReportsWithPenaltyByPersonId(@Param("personId") Integer personId);

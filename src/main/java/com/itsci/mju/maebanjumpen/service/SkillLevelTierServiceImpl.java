@@ -48,9 +48,6 @@ public class SkillLevelTierServiceImpl implements SkillLevelTierService {
         // Update fields from DTO to Entity
         Optional.ofNullable(skillLevelTierDTO.getSkillLevelName()).ifPresent(existingTier::setSkillLevelName);
         Optional.ofNullable(skillLevelTierDTO.getMinHiresForLevel()).ifPresent(existingTier::setMinHiresForLevel);
-        Optional.ofNullable(skillLevelTierDTO.getPriceMultiplier()).ifPresent(existingTier::setPriceMultiplier);
-        Optional.ofNullable(skillLevelTierDTO.getMaxPricePerHourLimit()).ifPresent(existingTier::setMaxPricePerHourLimit);
-        Optional.ofNullable(skillLevelTierDTO.getMinPricePerHourLimit()).ifPresent(existingTier::setMinPricePerHourLimit);
 
         SkillLevelTier updatedTier = skillLevelTierRepository.save(existingTier);
         return skillLevelTierMapper.toDto(updatedTier);

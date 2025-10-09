@@ -11,5 +11,4 @@ public class SkillTypeDTO {
     private Integer skillTypeId;
     private String skillTypeName;
     private String skillTypeDetail;
-    private Double basePricePerHour;
 }

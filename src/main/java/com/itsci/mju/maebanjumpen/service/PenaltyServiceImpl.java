@@ -5,6 +5,8 @@ import com.itsci.mju.maebanjumpen.mapper.PenaltyMapper;
 import com.itsci.mju.maebanjumpen.model.Penalty;
 import com.itsci.mju.maebanjumpen.model.Person;
 import com.itsci.mju.maebanjumpen.model.Report;
+import com.itsci.mju.maebanjumpen.model.PartyRole; // 💡 ต้องใช้ PartyRole
+import com.itsci.mju.maebanjumpen.repository.PartyRoleRepository; // ✅ เพิ่ม Dependency ใหม่
 import com.itsci.mju.maebanjumpen.repository.PenaltyRepository;
 import com.itsci.mju.maebanjumpen.repository.ReportRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class PenaltyServiceImpl implements PenaltyService {
     private final PenaltyRepository penaltyRepository;
     private final ReportRepository reportRepository;
     private final PersonService personService;
+    private final PartyRoleRepository partyRoleRepository; // ✅ เพิ่ม Dependency
 
     @Override
     public List<PenaltyDTO> getAllPenalties() {
@@ -38,15 +41,28 @@ public class PenaltyServiceImpl implements PenaltyService {
     }
 
     /**
-     * บันทึกข้อมูลการลงโทษ และอัปเดตสถานะบัญชีของผู้ถูกลงโทษ
-     * พร้อมทั้งผูก Penalty Entity เข้ากับ Report Entity ที่เกี่ยวข้อง (Report คือ Owning Side)
-     * @param penaltyDto ข้อมูลการลงโทษ
-     * @return PenaltyDTO ที่ถูกบันทึก
+     * 🛑 **คำเตือน:** เมธอดนี้ถูกแทนที่ด้วย savePenalty(PenaltyDTO, Integer targetRoleId) แล้ว
+     * กรุณาอัปเดต Controller ให้เรียกเมธอดใหม่
      */
     @Override
     @Transactional
     public PenaltyDTO savePenalty(PenaltyDTO penaltyDto) {
-        // 1. Convert DTO to Entity and save the Penalty (Penalty is the inverse side)
+        throw new UnsupportedOperationException("Method savePenalty(PenaltyDTO) is deprecated. Use savePenalty(PenaltyDTO, Integer targetRoleId) instead.");
+    }
+
+    /**
+     * ✅ **เมธอดที่แก้ไข:** บันทึกข้อมูลการลงโทษ และอัปเดตสถานะบัญชีของผู้ถูกลงโทษ
+     * @param penaltyDto ข้อมูลการลงโทษ (มี reportId สำหรับผูกความสัมพันธ์)
+     * @param targetRoleId ID ของบทบาท (Role ID เช่น 3 สำหรับ Hirer) ที่ต้องการลงโทษ
+     * @return PenaltyDTO ที่ถูกบันทึก
+     */
+    @Transactional
+    public PenaltyDTO savePenalty(PenaltyDTO penaltyDto, Integer targetRoleId) { // 💡 เปลี่ยน Signature
+        if (targetRoleId == null) {
+            throw new IllegalArgumentException("Target Role ID is required to apply penalty.");
+        }
+
+        // 1. Convert DTO to Entity and save the Penalty
         Penalty penalty = penaltyMapper.toEntity(penaltyDto);
         Penalty savedPenalty = penaltyRepository.save(penalty);
 
@@ -60,12 +76,12 @@ public class PenaltyServiceImpl implements PenaltyService {
 
                 // 2a. Set the new penalty on the Report (Report is the owning side)
                 report.setPenalty(savedPenalty);
-                // 2b. Update the report status to reflect the penalty has been applied
-                report.setReportStatus("PENALIZED");
+                // 2b. Update the report status to resolved/penalized
+                report.setReportStatus("RESOLVED"); // ✅ เมื่อมีการลงโทษ ถือว่ารายงานถูกจัดการแล้ว
                 reportRepository.save(report);
 
                 // 2c. Update the account status of the penalized person
-                updateAccountStatusFromReport(report, savedPenalty.getPenaltyType());
+                updateAccountStatus(targetRoleId, savedPenalty.getPenaltyType()); // ✅ ใช้เมธอดใหม่
             } else {
                 System.err.println("Warning: Report ID " + reportId + " not found for new Penalty. Linking skipped.");
             }
@@ -75,6 +91,34 @@ public class PenaltyServiceImpl implements PenaltyService {
 
         return penaltyMapper.toDto(savedPenalty);
     }
+
+    /**
+     * ✅ **เมธอดใหม่:** ดึง Person ID จาก Role ID และอัปเดตสถานะบัญชี
+     * 🎯 แก้ไข Logic การระบุตัวผู้ถูกลงโทษโดยตรง โดยใช้ targetRoleId
+     * @param targetRoleId ID ของบทบาท (Role ID) ที่ต้องการลงโทษ
+     * @param penaltyType ประเภทการลงโทษ (สถานะใหม่ของบัญชี)
+     */
+    @Transactional
+    private void updateAccountStatus(Integer targetRoleId, String penaltyType) {
+        // 1. ค้นหา PartyRole (Hirer/Housekeeper) จาก Role ID ที่ Frontend ระบุ
+        // NOTE: ต้องมั่นใจว่า PartyRole Entity โหลด Person object มาด้วย (lazy load อาจต้องการ @Transactional)
+        Optional<PartyRole> optionalPartyRole = partyRoleRepository.findById(targetRoleId);
+
+        if (optionalPartyRole.isPresent()) {
+            PartyRole partyRole = optionalPartyRole.get();
+            Person personToUpdate = partyRole.getPerson();
+
+            if (personToUpdate != null) {
+                personService.updateAccountStatus(personToUpdate.getPersonId(), penaltyType);
+                System.out.println("Updated person account status to: " + penaltyType + " for person ID: " + personToUpdate.getPersonId());
+            } else {
+                System.err.println("Error: Person object is missing for Role ID: " + targetRoleId + ". Cannot update account status.");
+            }
+        } else {
+            System.err.println("Error: Target PartyRole not found with ID: " + targetRoleId + ". Cannot apply penalty.");
+        }
+    }
+
 
     /**
      * ลบ Penalty และยกเลิกการผูกความสัมพันธ์กับ Report
@@ -89,19 +133,14 @@ public class PenaltyServiceImpl implements PenaltyService {
             Penalty penaltyToDelete = optionalPenalty.get();
 
             // 1. Find the related Report (Report is the owning side)
-            // Note: Accessing penaltyToDelete.getReport() can trigger LAZY loading if done in a separate session
-            // We use the ID to ensure we retrieve a fresh, managed entity if needed.
-            // Since this is @Transactional, direct access should be okay, but using reportRepository.findById is safer for explicit fetching.
             if (penaltyToDelete.getReport() != null && penaltyToDelete.getReport().getReportId() != null) {
                 reportRepository.findById(penaltyToDelete.getReport().getReportId()).ifPresent(report -> {
                     // 2. Unlink the Penalty from the Report (Owning side)
                     report.setPenalty(null);
-                    report.setReportStatus("RESOLVED"); // หรือสถานะที่เหมาะสมหลังยกเลิกโทษ
+                    report.setReportStatus("RESOLVED");
                     reportRepository.save(report);
 
                     // 3. Revert Account Status (TODO: ตรรกะการยกเลิกโทษ)
-                    // ตัวอย่าง: ถ้า PenaltyType เดิมคือ BANNED อาจเปลี่ยนเป็น ACTIVE
-                    // หากไม่มีตรรกะยกเลิกที่ชัดเจน ให้บันทึก log ไว้
                     System.out.println("Penalty ID " + id + " was unlinked from Report ID " + report.getReportId());
                 });
             }
@@ -111,10 +150,8 @@ public class PenaltyServiceImpl implements PenaltyService {
     }
 
     /**
-     * อัปเดตข้อมูลการลงโทษ และอัปเดตสถานะบัญชีของผู้ถูกลงโทษ หากมีการเปลี่ยนแปลงประเภทโทษ
-     * @param id ID ของ Penalty
-     * @param penaltyDto ข้อมูลการลงโทษที่ต้องการอัปเดต
-     * @return PenaltyDTO ที่ถูกอัปเดต
+     * อัปเดตข้อมูลการลงโทษ
+     * 🛑 **คำเตือน:** เมธอดนี้ยังไม่สามารถอัปเดตสถานะบัญชีได้อย่างปลอดภัย (ดู Warning ด้านล่าง)
      */
     @Override
     @Transactional
@@ -144,50 +181,11 @@ public class PenaltyServiceImpl implements PenaltyService {
 
         // ถ้ามีการเปลี่ยนประเภทโทษ อัปเดตสถานะบัญชี
         if (penaltyTypeChanged) {
-            // ดึง Report มาเพื่ออัปเดตสถานะบัญชี
-            if (updatedPenalty.getReport() != null && updatedPenalty.getReport().getReportId() != null) {
-                reportRepository.findById(updatedPenalty.getReport().getReportId()).ifPresent(report -> {
-                    updateAccountStatusFromReport(report, updatedPenalty.getPenaltyType());
-                });
-            } else if (penaltyDto.getReportId() != null) {
-                // กรณีที่ Penalty Entity อาจจะยังไม่ได้โหลด Report มา แต่ DTO มี reportId
-                reportRepository.findById(penaltyDto.getReportId()).ifPresent(report -> {
-                    updateAccountStatusFromReport(report, updatedPenalty.getPenaltyType());
-                });
-            }
+            // 🛑 WARNING: Logic เดิมไม่สามารถระบุ Target ได้ชัดเจนจาก Penalty Entity
+            // ซึ่งต้องแก้ไขโดยการส่ง Target Role ID เข้ามาใน DTO สำหรับการอัปเดตด้วย
+            System.err.println("Warning: Skipping account status update in updatePenalty method because the target person ID cannot be reliably determined from the existing entities.");
         }
 
         return penaltyMapper.toDto(updatedPenalty);
-    }
-
-    /**
-     * ดึง Report Entity ที่สมบูรณ์มา เพื่อค้นหา Person ที่ถูกลงโทษ และอัปเดตสถานะบัญชี
-     * @param report Report Entity ที่เกี่ยวข้อง (ควรเป็น Fully Initialized Entity)
-     * @param penaltyType ประเภทการลงโทษ (สถานะใหม่ของบัญชี)
-     */
-    @Transactional
-    private void updateAccountStatusFromReport(Report report, String penaltyType) {
-        Person personToUpdate = null;
-
-        // ตรวจสอบว่าใครคือผู้ถูกลงโทษ (Housekeeper หรือ Hirer)
-        /*
-         * ตรรกะการระบุผู้ถูกลงโทษ:
-         * 1. ตรวจสอบ Housekeeper ก่อน (มักจะถือว่าเป็นผู้ให้บริการหลัก)
-         * 2. หาก Housekeeper ไม่มี (null) หรือข้อมูล Person ไม่สมบูรณ์ จึงตรวจสอบ Hirer
-         * ในกรณีที่ Report มี Housekeeper ID เป็น null และมี Hirer ID (ตาม log: Hirer ID: 1, Housekeeper ID: null)
-         * โค้ดจะข้ามเงื่อนไขแรกและเลือก Hirer ได้ถูกต้อง
-         */
-        if (report.getHousekeeper() != null && report.getHousekeeper().getPerson() != null) {
-            personToUpdate = report.getHousekeeper().getPerson();
-        } else if (report.getHirer() != null && report.getHirer().getPerson() != null) {
-            personToUpdate = report.getHirer().getPerson();
-        }
-
-        if (personToUpdate != null) {
-            personService.updateAccountStatus(personToUpdate.getPersonId(), penaltyType);
-            System.out.println("Updated person account status to: " + penaltyType + " for person ID: " + personToUpdate.getPersonId());
-        } else {
-            System.err.println("Error: Linked Person (Hirer/Housekeeper) not found in Report ID: " + report.getReportId() + ". Cannot update account status. (Both Hirer and Housekeeper fields may be null or incomplete.)");
-        }
     }
 }
