@@ -9,7 +9,6 @@ import java.util.Optional; // 💡 ต้อง Import คลาส Optional
 @Repository
 public interface PersonRepository extends JpaRepository<Person, Integer> {
 
-    // ✅ แก้ไข: เปลี่ยน Return Type เป็น Optional<Person>
     Optional<Person> findByLoginUsername(String username);
 
 }

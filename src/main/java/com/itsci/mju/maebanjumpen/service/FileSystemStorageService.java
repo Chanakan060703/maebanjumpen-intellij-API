@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -29,7 +30,7 @@ public class FileSystemStorageService implements StorageService {
         System.out.println("uploadDir: " + uploadDir);
         System.out.println("folderName: " + folderName);
 
-        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
         String fileExtension = FilenameUtils.getExtension(originalFilename);
         String newFilename = UUID.randomUUID().toString();
         if (!fileExtension.isEmpty()) {
@@ -57,7 +58,7 @@ public class FileSystemStorageService implements StorageService {
             throw new Exception("Failed to store empty file.");
         }
 
-        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
         String fileExtension = FilenameUtils.getExtension(originalFilename);
         String newFilename = UUID.randomUUID().toString();
         if (!fileExtension.isEmpty()) {

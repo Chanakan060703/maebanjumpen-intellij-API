@@ -14,7 +14,6 @@ public interface HousekeeperSkillRepository extends JpaRepository<HousekeeperSki
 
     Optional<HousekeeperSkill> findByHousekeeperId(Integer housekeeperId);
 
-    // หรือใช้ @Query เพื่อระบุ JPQL query ให้ชัดเจน
     // @Query("SELECT hks FROM HousekeeperSkill hks WHERE hks.housekeeper.id = :housekeeperId AND hks.skillType.skillTypeId = :skillTypeId")
     // Optional<HousekeeperSkill> findByHousekeeperIdAndSkillTypeId(@Param("housekeeperId") Integer housekeeperId, @Param("skillTypeId") Integer skillTypeId);
 }

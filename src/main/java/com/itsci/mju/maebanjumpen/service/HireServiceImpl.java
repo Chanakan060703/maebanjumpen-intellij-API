@@ -105,8 +105,6 @@ public class HireServiceImpl implements HireService {
         // 5. ตั้งค่า Hire Name (จาก SkillType)
         hire.setHireName(skillType.getSkillTypeName());
 
-        // 6. ตั้งค่า Hire Detail: ใช้ค่าที่ส่งมาจาก DTO โดยตรง (รวมบริการเสริมแล้ว)
-        // ❌ ลบตรรกะการสร้างสตริงบริการเสริมออกจาก Back-end
         hire.setHireDetail(hireDto.getHireDetail());
 
         // 7. บันทึกและคืนค่า DTO

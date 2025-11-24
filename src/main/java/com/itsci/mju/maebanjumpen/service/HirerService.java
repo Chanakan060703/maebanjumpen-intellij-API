@@ -13,7 +13,6 @@ public interface HirerService {
     HirerDTO updateHirer(int id, HirerDTO hirerDto);
     void deleteHirer(int id);
 
-    // เมธอด Business Logic เหล่านี้สามารถใช้ Entity ID และค่าพื้นฐานได้
     void deductBalance(Integer hirerId, Double amount) throws InsufficientBalanceException, HirerNotFoundException;
     void addBalance(Integer hirerId, Double amount) throws HirerNotFoundException;
 

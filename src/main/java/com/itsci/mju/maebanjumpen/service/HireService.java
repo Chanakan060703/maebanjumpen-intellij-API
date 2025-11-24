@@ -12,13 +12,11 @@ public interface HireService {
     List<HireDTO> getHiresByHirerId(Integer hirerId);
     List<HireDTO> getHiresByHousekeeperId(Integer housekeeperId);
 
-    // ⬅️ แก้ไขชื่อ DTO ให้ถูกต้อง และใช้ DTO ในการรับข้อมูล
     HireDTO saveHire(HireDTO hireDto);
 
     HireDTO updateHire(Integer id, HireDTO hireDto) throws InsufficientBalanceException, HirerNotFoundException;
     void deleteHire(Integer id);
     List<HireDTO> getCompletedHiresByHousekeeperId(Integer housekeeperId);
-    // ⬅️ คืนค่า DTO
     HireDTO addProgressionImagesToHire(Integer hireId, List<String> imageUrls);
 
 
