@@ -6,7 +6,6 @@ import com.itsci.mju.maebanjumpen.model.Person;
 import com.itsci.mju.maebanjumpen.repository.HousekeeperRepository;
 import com.itsci.mju.maebanjumpen.repository.HireRepository;
 import com.itsci.mju.maebanjumpen.repository.PersonRepository;
-import com.itsci.mju.maebanjumpen.service.HireServiceImpl;
 import com.itsci.mju.maebanjumpen.service.StorageService;
 import com.itsci.mju.maebanjumpen.service.HireService;
 import org.springframework.beans.factory.annotation.Autowired;

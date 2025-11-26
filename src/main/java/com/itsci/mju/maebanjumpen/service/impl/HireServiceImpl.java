@@ -1,4 +1,4 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.HireDTO;
 import com.itsci.mju.maebanjumpen.exception.HirerNotFoundException;
@@ -13,6 +13,7 @@ import com.itsci.mju.maebanjumpen.repository.HireRepository;
 import com.itsci.mju.maebanjumpen.repository.HirerRepository;
 import com.itsci.mju.maebanjumpen.repository.HousekeeperRepository;
 import com.itsci.mju.maebanjumpen.repository.SkillTypeRepository;
+import com.itsci.mju.maebanjumpen.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,10 +79,8 @@ public class HireServiceImpl implements HireService {
     @Override
     @Transactional
     public HireDTO saveHire(HireDTO hireDto) {
-        // 1. แปลง DTO เป็น Entity ชั่วคราวเพื่อเข้าถึง ID
         Hire hire = hireMapper.toEntity(hireDto);
 
-        // 2. ดึง Entity ที่สมบูรณ์จาก ID ใน DTO
         Hirer hirer = validateAndGetHirer(hire);
         hire.setHirer(hirer);
 
@@ -91,25 +90,18 @@ public class HireServiceImpl implements HireService {
         SkillType skillType = validateAndGetSkillType(hire);
         hire.setSkillType(skillType);
 
-        // 3. กำหนดราคารวม: ใช้ค่าที่ส่งมาจาก DTO โดยตรง (คำนวณจาก Flutter แล้ว)
         if (hireDto.getPaymentAmount() == null || hireDto.getPaymentAmount() <= 0) {
             throw new IllegalArgumentException("Payment amount is required and must be a positive value.");
         }
         hire.setPaymentAmount(hireDto.getPaymentAmount());
 
-        // 4. ตรวจสอบ balance
         if (hirer.getBalance() < hire.getPaymentAmount()) {
             throw new InsufficientBalanceException("Insufficient balance to create a hire.");
         }
 
-        // 5. ตั้งค่า Hire Name (จาก SkillType)
         hire.setHireName(skillType.getSkillTypeName());
-
         hire.setHireDetail(hireDto.getHireDetail());
-
-        // 7. บันทึกและคืนค่า DTO
         Hire savedHire = hireRepository.save(hire);
-        // ดึงข้อมูล Hire ที่ถูกบันทึกพร้อมรายละเอียดทั้งหมด
         Hire finalHire = hireRepository.fetchByIdWithAllDetails(savedHire.getHireId()).orElse(savedHire);
         return hireMapper.toDto(finalHire);
     }
@@ -125,7 +117,6 @@ public class HireServiceImpl implements HireService {
         String oldStatus = existingHire.getJobStatus();
         String newStatus = hireDto.getJobStatus();
 
-        // ตรรกะการทำธุรกรรมเมื่อสถานะเปลี่ยนเป็น 'Completed'
         if (newStatus != null && "Completed".equalsIgnoreCase(newStatus)
                 && !"Completed".equalsIgnoreCase(oldStatus)) {
 
@@ -133,19 +124,15 @@ public class HireServiceImpl implements HireService {
                 throw new IllegalStateException("Cannot complete hire. Payment amount is missing or invalid.");
             }
 
-            // หักยอดคงเหลือผู้จ้าง
             hirerService.deductBalance(existingHire.getHirer().getId(), existingHire.getPaymentAmount());
-            // เพิ่มยอดคงเหลือแม่บ้าน
             housekeeperService.addBalance(existingHire.getHousekeeper().getId(), existingHire.getPaymentAmount());
 
-            // อัปเดตระดับทักษะและจำนวนงานที่เสร็จสมบูรณ์ของแม่บ้าน
             housekeeperSkillService.updateSkillLevelAndHiresCompleted(
                     existingHire.getHousekeeper().getId(),
                     existingHire.getSkillType().getSkillTypeId()
             );
         }
 
-        // อัปเดตฟิลด์อื่นๆ
         if (newStatus != null) existingHire.setJobStatus(newStatus);
         if (hireDto.getHireName() != null) existingHire.setHireName(hireDto.getHireName());
         if (hireDto.getHireDetail() != null) existingHire.setHireDetail(hireDto.getHireDetail());
@@ -155,7 +142,6 @@ public class HireServiceImpl implements HireService {
         if (hireDto.getEndTime() != null) existingHire.setEndTime(hireDto.getEndTime());
         if (hireDto.getLocation() != null) existingHire.setLocation(hireDto.getLocation());
 
-        // อัปเดต SkillType ถ้ามีการเปลี่ยนแปลง
         if (hireDto.getSkillType() != null
                 && hireDto.getSkillType().getSkillTypeId() != null
                 && !existingHire.getSkillType().getSkillTypeId()
@@ -169,7 +155,6 @@ public class HireServiceImpl implements HireService {
         }
 
         Hire updatedHire = hireRepository.save(existingHire);
-        // ดึงข้อมูล Hire ที่ถูกอัปเดตพร้อมรายละเอียดทั้งหมด
         Hire finalHire = hireRepository.fetchByIdWithAllDetails(updatedHire.getHireId()).orElse(updatedHire);
         return hireMapper.toDto(finalHire);
     }
@@ -191,8 +176,6 @@ public class HireServiceImpl implements HireService {
         Hire updatedHire = hireRepository.save(hire);
         return hireMapper.toDto(updatedHire);
     }
-
-    // --- Helper methods (ทำงานกับ Entity) ---
 
     private Hirer validateAndGetHirer(Hire hire) {
         if (hire.getHirer() == null || hire.getHirer().getId() == null) {

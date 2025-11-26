@@ -1,4 +1,4 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.PersonDTO; // ⬅️ ต้องใช้ DTO
 import com.itsci.mju.maebanjumpen.mapper.PersonMapper; // ⬅️ ต้องใช้ Mapper
@@ -6,6 +6,7 @@ import com.itsci.mju.maebanjumpen.model.Person;
 import com.itsci.mju.maebanjumpen.model.Login;
 import com.itsci.mju.maebanjumpen.repository.PersonRepository;
 import com.itsci.mju.maebanjumpen.repository.LoginRepository;
+import com.itsci.mju.maebanjumpen.service.PersonService;
 import lombok.RequiredArgsConstructor; // ⬅️ แนะนำให้ใช้ RequiredArgsConstructor
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

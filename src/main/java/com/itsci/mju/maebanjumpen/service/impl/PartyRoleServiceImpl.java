@@ -1,10 +1,11 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.PartyRoleDTO; // ⬅️ DTO
 import com.itsci.mju.maebanjumpen.mapper.PartyRoleMapper; // ⬅️ Mapper
 import com.itsci.mju.maebanjumpen.model.*;
 import com.itsci.mju.maebanjumpen.repository.PartyRoleRepository;
 import com.itsci.mju.maebanjumpen.repository.PersonRepository;
+import com.itsci.mju.maebanjumpen.service.PartyRoleService;
 import lombok.RequiredArgsConstructor; // ⬅️ ใช้แทน @Autowired
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

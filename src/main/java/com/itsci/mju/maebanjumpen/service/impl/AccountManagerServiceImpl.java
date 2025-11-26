@@ -1,15 +1,15 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.AccountManagerDTO;
 import com.itsci.mju.maebanjumpen.mapper.AccountManagerMapper; // ⬅️ ต้องมี Mapper
 import com.itsci.mju.maebanjumpen.model.AccountManager; // ⬅️ ต้องใช้ Entity
 import com.itsci.mju.maebanjumpen.repository.AccountManagerRepository;
+import com.itsci.mju.maebanjumpen.service.AccountManagerService;
 import lombok.RequiredArgsConstructor; // ⬅️ ใช้แทน @Autowired
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor // Inject final fields

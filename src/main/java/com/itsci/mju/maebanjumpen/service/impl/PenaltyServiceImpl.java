@@ -1,4 +1,4 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.PenaltyDTO;
 import com.itsci.mju.maebanjumpen.mapper.PenaltyMapper;
@@ -9,6 +9,8 @@ import com.itsci.mju.maebanjumpen.model.PartyRole; // 💡 ต้องใช้
 import com.itsci.mju.maebanjumpen.repository.PartyRoleRepository; // ✅ เพิ่ม Dependency ใหม่
 import com.itsci.mju.maebanjumpen.repository.PenaltyRepository;
 import com.itsci.mju.maebanjumpen.repository.ReportRepository;
+import com.itsci.mju.maebanjumpen.service.PenaltyService;
+import com.itsci.mju.maebanjumpen.service.PersonService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,4 +1,4 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.HousekeeperDTO;
 import com.itsci.mju.maebanjumpen.dto.HousekeeperSkillDTO;
@@ -14,6 +14,7 @@ import com.itsci.mju.maebanjumpen.repository.HousekeeperSkillRepository;
 import com.itsci.mju.maebanjumpen.repository.SkillLevelTierRepository;
 import com.itsci.mju.maebanjumpen.repository.SkillTypeRepository;
 
+import com.itsci.mju.maebanjumpen.service.HousekeeperSkillService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

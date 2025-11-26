@@ -1,12 +1,12 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.MemberDTO;
 import com.itsci.mju.maebanjumpen.mapper.MemberMapper; // ⬅️ Import Mapper
-import com.itsci.mju.maebanjumpen.model.Hirer;
 import com.itsci.mju.maebanjumpen.model.Housekeeper;
 import com.itsci.mju.maebanjumpen.model.Member;
 import com.itsci.mju.maebanjumpen.model.Person;
 import com.itsci.mju.maebanjumpen.repository.MemberRepository;
+import com.itsci.mju.maebanjumpen.service.MemberService;
 import lombok.RequiredArgsConstructor; // ⬅️ ใช้แทน @Autowired
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;

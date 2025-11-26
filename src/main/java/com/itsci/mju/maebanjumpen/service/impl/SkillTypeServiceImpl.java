@@ -1,10 +1,11 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 // ใช้ DTO package ที่ถูกต้องเพียงอันเดียว (สมมติว่าเป็น com.itsci.mju.maebanjumpen.dto)
 import com.itsci.mju.maebanjumpen.dto.SkillTypeDTO;
 import com.itsci.mju.maebanjumpen.mapper.SkillTypeMapper;
 import com.itsci.mju.maebanjumpen.model.SkillType;
 import com.itsci.mju.maebanjumpen.repository.SkillTypeRepository;
+import com.itsci.mju.maebanjumpen.service.SkillTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

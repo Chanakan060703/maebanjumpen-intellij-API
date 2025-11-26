@@ -1,4 +1,4 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.ReviewDTO;
 import com.itsci.mju.maebanjumpen.mapper.ReviewMapper;
@@ -6,6 +6,9 @@ import com.itsci.mju.maebanjumpen.model.Review;
 import com.itsci.mju.maebanjumpen.model.Hire;
 import com.itsci.mju.maebanjumpen.repository.ReviewRepository;
 import com.itsci.mju.maebanjumpen.repository.HireRepository;
+import com.itsci.mju.maebanjumpen.service.HireStatusUpdateService;
+import com.itsci.mju.maebanjumpen.service.HousekeeperService;
+import com.itsci.mju.maebanjumpen.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

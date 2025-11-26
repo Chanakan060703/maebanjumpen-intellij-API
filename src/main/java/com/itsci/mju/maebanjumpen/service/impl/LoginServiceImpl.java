@@ -1,4 +1,4 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.LoginDTO;
 import com.itsci.mju.maebanjumpen.dto.PartyRoleDTO;
@@ -9,6 +9,7 @@ import com.itsci.mju.maebanjumpen.model.*;
 import com.itsci.mju.maebanjumpen.repository.LoginRepository;
 import com.itsci.mju.maebanjumpen.repository.PartyRoleRepository;
 import com.itsci.mju.maebanjumpen.repository.PersonRepository;
+import com.itsci.mju.maebanjumpen.service.LoginService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,7 +66,6 @@ public class LoginServiceImpl implements LoginService {
     @Override
     @Transactional(readOnly = true)
     public PartyRoleDTO findPartyRoleByLogin(String username, String rawPassword) {
-        // 1. ค้นหา Login
         Optional<Login> loginOpt = loginRepository.findByUsername(username);
         if (loginOpt.isEmpty()) {
             return null;
@@ -74,13 +74,11 @@ public class LoginServiceImpl implements LoginService {
         Login storedLogin = loginOpt.get();
         String storedHash = storedLogin.getPassword();
 
-        // 2. ตรวจสอบรหัสผ่าน
         if (!PasswordUtil.verifyPassword(rawPassword, storedHash)) {
             System.out.println("-> [LoginService] Authentication failed: Invalid password for user: " + username);
             return null;
         }
 
-        // 3. ค้นหา Person
         Optional<Person> personOpt = personRepository.findByLoginUsername(username);
         if (personOpt.isEmpty()) {
             System.out.println("-> [LoginService] Authentication failed: Person not found for user: " + username);
@@ -88,15 +86,12 @@ public class LoginServiceImpl implements LoginService {
         }
         Person person = personOpt.get();
 
-        // 4. ตรวจสอบสถานะบัญชี
         String status = person.getAccountStatus();
         if (!"active".equalsIgnoreCase(status)) {
             System.out.println("-> [LoginService] Authentication failed: Account status is inactive (" + status + ") for user: " + username);
-            // 🚨 การเปลี่ยนแปลงสำคัญ: Throw Custom Exception พร้อมแนบสถานะบัญชี
             throw new AccountStatusException("Account is restricted: " + status, status);
         }
 
-        // 5. ค้นหา PartyRole ด้วยเมธอด @EntityGraph
         List<PartyRole> roles = partyRoleRepository.findByPersonPersonId(person.getPersonId());
 
         if (roles.isEmpty()) {
@@ -105,9 +100,6 @@ public class LoginServiceImpl implements LoginService {
 
         PartyRole role = roles.get(0);
 
-        // 6. ไม่ต้องตรวจสอบสถานะบัญชีสำหรับ Member ซ้ำ เนื่องจากถูกตรวจสอบไปแล้วที่ Step 4
-
-        // 7. แปลง Entity ที่โหลดครบถ้วนแล้วเป็น DTO ก่อนคืนค่า
         return partyRoleMapper.toDto(role);
     }
 }

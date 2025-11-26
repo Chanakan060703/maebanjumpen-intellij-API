@@ -1,9 +1,10 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.SkillLevelTierDTO;
 import com.itsci.mju.maebanjumpen.mapper.SkillLevelTierMapper;
 import com.itsci.mju.maebanjumpen.model.SkillLevelTier;
 import com.itsci.mju.maebanjumpen.repository.SkillLevelTierRepository;
+import com.itsci.mju.maebanjumpen.service.SkillLevelTierService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

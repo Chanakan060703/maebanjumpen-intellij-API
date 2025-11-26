@@ -1,4 +1,4 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.HousekeeperDTO;
 import com.itsci.mju.maebanjumpen.dto.HousekeeperDetailDTO;
@@ -11,6 +11,7 @@ import com.itsci.mju.maebanjumpen.model.Housekeeper;
 import com.itsci.mju.maebanjumpen.model.Person;
 import com.itsci.mju.maebanjumpen.repository.HousekeeperRepository;
 import com.itsci.mju.maebanjumpen.repository.PersonRepository;
+import com.itsci.mju.maebanjumpen.service.HousekeeperService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,6 @@ public class HousekeeperServiceImpl implements HousekeeperService {
     @Value("${app.public-base-url}")
     private String publicBaseUrl;
 
-    // --- Helper Methods (URL Transformation) ---
     private String buildFullImageUrl(String filename, String folderName) {
         if (filename == null || filename.isEmpty()) {
             return null;
@@ -60,7 +60,6 @@ public class HousekeeperServiceImpl implements HousekeeperService {
 
         for (HireDTO hireDto : hires) {
             if (hireDto.getHirer() != null && hireDto.getHirer().getPerson() != null) {
-                // ⭐️ ที่นี่คือการแก้ไขหลัก: แปลง URL รูปโปรไฟล์ของ Hirer (ผู้รีวิว)
                 var hirerPersonDto = hireDto.getHirer().getPerson();
                 String originalFilename = hirerPersonDto.getPictureUrl();
                 String fullUrl = buildFullImageUrl(originalFilename, "profile_pictures");
@@ -80,7 +79,6 @@ public class HousekeeperServiceImpl implements HousekeeperService {
                 .collect(Collectors.toList());
     }
 
-    // 🎯 เมธอดสำหรับหน้ารายละเอียดแม่บ้าน (แก้ไขให้มีการ Transform URL รูป Hirer)
     @Override
     @Transactional(readOnly = true)
     public HousekeeperDetailDTO getHousekeeperDetailById(int id) {
@@ -92,21 +90,20 @@ public class HousekeeperServiceImpl implements HousekeeperService {
         Housekeeper transformedHousekeeper = this.transformHousekeeperUrls(housekeeper);
         HousekeeperDetailDTO detailDto = housekeeperMapper.toDetailDto(transformedHousekeeper);
 
-        // ⭐️ แก้ไขตรงนี้: ทำการแปลง URL รูป Hirer ทันทีที่ HireDTO ถูก Map เสร็จ
+
         if (detailDto.getHires() != null) {
-            transformHireHirerUrls(detailDto.getHires()); // <--- เรียกใช้เมธอดใหม่นี้!
+            transformHireHirerUrls(detailDto.getHires());
         }
 
-        // 3. ดึง Reviews จาก HireDTOs
+
         List<ReviewDTO> reviews = Collections.emptyList();
         if (detailDto.getHires() != null) {
             reviews = detailDto.getHires().stream()
-                    .map(HireDTO::getReview) // บรรทัดนี้จะไม่เกิด Error เพราะมันรันหลังจากแปลง URL แล้ว
+                    .map(HireDTO::getReview)
                     .filter(java.util.Objects::nonNull)
                     .collect(Collectors.toList());
         }
 
-        // 4. ตั้งค่า Reviews และล้าง Hires ออกจาก DTO
         detailDto.setReviews(reviews);
         detailDto.setHires(null);
 
@@ -146,7 +143,6 @@ public class HousekeeperServiceImpl implements HousekeeperService {
         Housekeeper existingHousekeeper = housekeeperRepository.findById(id)
                 .orElseThrow(() -> new HousekeeperNotFoundException("Housekeeper with ID " + id + " not found."));
 
-        // 1. อัปเดตข้อมูล Person
         if (housekeeperDto.getPerson() != null && existingHousekeeper.getPerson() != null) {
             Person existingPerson = existingHousekeeper.getPerson();
             existingPerson.setEmail(housekeeperDto.getPerson().getEmail());
@@ -158,7 +154,6 @@ public class HousekeeperServiceImpl implements HousekeeperService {
             personRepository.save(existingPerson);
         }
 
-        // 2. อัปเดตข้อมูล Housekeeper หลัก
         existingHousekeeper.setStatusVerify(Housekeeper.VerifyStatus.valueOf(housekeeperDto.getStatusVerify()));
         existingHousekeeper.setDailyRate(housekeeperDto.getDailyRate());
 

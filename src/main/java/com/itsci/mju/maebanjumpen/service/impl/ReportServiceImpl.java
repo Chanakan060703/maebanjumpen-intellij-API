@@ -1,10 +1,13 @@
-package com.itsci.mju.maebanjumpen.service;
+package com.itsci.mju.maebanjumpen.service.impl;
 
 import com.itsci.mju.maebanjumpen.dto.ReportDTO;
 import com.itsci.mju.maebanjumpen.exception.AlreadyReportedException;
 import com.itsci.mju.maebanjumpen.mapper.ReportMapper;
 import com.itsci.mju.maebanjumpen.model.*;
 import com.itsci.mju.maebanjumpen.repository.*;
+import com.itsci.mju.maebanjumpen.service.HireStatusUpdateService;
+import com.itsci.mju.maebanjumpen.service.PersonService;
+import com.itsci.mju.maebanjumpen.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
