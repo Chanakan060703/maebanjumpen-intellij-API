@@ -1,9 +1,8 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.HireDTO;
-import com.itsci.mju.maebanjumpen.model.Hire;
+import com.itsci.mju.maebanjumpen.hire.dto.HireDTO;
+import com.itsci.mju.maebanjumpen.entity.Hire;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 import java.util.List;
 

@@ -2,8 +2,8 @@
 
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.MemberDTO;
-import com.itsci.mju.maebanjumpen.model.Member;
+import com.itsci.mju.maebanjumpen.partyrole.dto.MemberDTO;
+import com.itsci.mju.maebanjumpen.entity.Member;
 import org.mapstruct.Mapper;
 
 import java.util.List;

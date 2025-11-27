@@ -1,9 +1,9 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.TransactionDTO;
-import com.itsci.mju.maebanjumpen.dto.MemberDTO; // 🎯 ต้อง Import DTO ที่ใช้
-import com.itsci.mju.maebanjumpen.model.Transaction;
-import com.itsci.mju.maebanjumpen.model.Member; // 🎯 ต้อง Import Entity ที่ใช้
+import com.itsci.mju.maebanjumpen.transaction.dto.TransactionDTO;
+import com.itsci.mju.maebanjumpen.partyrole.dto.MemberDTO; // 🎯 ต้อง Import DTO ที่ใช้
+import com.itsci.mju.maebanjumpen.entity.Transaction;
+import com.itsci.mju.maebanjumpen.entity.Member; // 🎯 ต้อง Import Entity ที่ใช้
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

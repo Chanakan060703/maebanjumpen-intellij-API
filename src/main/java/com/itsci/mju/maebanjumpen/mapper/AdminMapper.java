@@ -1,8 +1,8 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
 
-import com.itsci.mju.maebanjumpen.dto.AdminDTO;
-import com.itsci.mju.maebanjumpen.model.Admin;
+import com.itsci.mju.maebanjumpen.partyrole.dto.AdminDTO;
+import com.itsci.mju.maebanjumpen.entity.Admin;
 import org.mapstruct.Mapper;
 
 import java.util.List;

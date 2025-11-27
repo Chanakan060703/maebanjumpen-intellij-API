@@ -1,7 +1,7 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.ReviewDTO;
-import com.itsci.mju.maebanjumpen.model.Review;
+import com.itsci.mju.maebanjumpen.review.dto.ReviewDTO;
+import com.itsci.mju.maebanjumpen.entity.Review;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import java.util.List;

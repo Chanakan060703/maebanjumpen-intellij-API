@@ -1,7 +1,7 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.SkillTypeDTO;
-import com.itsci.mju.maebanjumpen.model.SkillType;
+import com.itsci.mju.maebanjumpen.skilltype.dto.SkillTypeDTO;
+import com.itsci.mju.maebanjumpen.entity.SkillType;
 import org.mapstruct.Mapper;
 
 import java.util.List;

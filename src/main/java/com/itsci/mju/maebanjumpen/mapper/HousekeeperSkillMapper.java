@@ -1,7 +1,7 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.HousekeeperSkillDTO;
-import com.itsci.mju.maebanjumpen.model.HousekeeperSkill;
+import com.itsci.mju.maebanjumpen.housekeeperskill.dto.HousekeeperSkillDTO;
+import com.itsci.mju.maebanjumpen.entity.HousekeeperSkill;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import java.util.List;

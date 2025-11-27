@@ -1,7 +1,7 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.PenaltyDTO;
-import com.itsci.mju.maebanjumpen.model.Penalty;
+import com.itsci.mju.maebanjumpen.penalty.dto.PenaltyDTO;
+import com.itsci.mju.maebanjumpen.entity.Penalty;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

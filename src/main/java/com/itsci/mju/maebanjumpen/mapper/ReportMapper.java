@@ -1,7 +1,7 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.ReportDTO;
-import com.itsci.mju.maebanjumpen.model.Report;
+import com.itsci.mju.maebanjumpen.report.dto.ReportDTO;
+import com.itsci.mju.maebanjumpen.entity.Report;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

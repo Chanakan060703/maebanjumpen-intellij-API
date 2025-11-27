@@ -1,8 +1,8 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.HirerDTO;
-import com.itsci.mju.maebanjumpen.model.Hirer;
-import com.itsci.mju.maebanjumpen.model.Hire; // ต้อง Import Hire
+import com.itsci.mju.maebanjumpen.partyrole.dto.HirerDTO;
+import com.itsci.mju.maebanjumpen.entity.Hirer;
+import com.itsci.mju.maebanjumpen.entity.Hire; // ต้อง Import Hire
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;

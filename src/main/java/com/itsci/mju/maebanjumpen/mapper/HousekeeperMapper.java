@@ -1,8 +1,8 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.HousekeeperDTO;
-import com.itsci.mju.maebanjumpen.dto.HousekeeperDetailDTO;
-import com.itsci.mju.maebanjumpen.model.Housekeeper;
+import com.itsci.mju.maebanjumpen.partyrole.dto.HousekeeperDTO;
+import com.itsci.mju.maebanjumpen.housekeeperskill.dto.HousekeeperDetailDTO;
+import com.itsci.mju.maebanjumpen.entity.Housekeeper;
 import org.mapstruct.IterableMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -47,11 +47,11 @@ public interface HousekeeperMapper {
 
     // 🎯 NEW: Helper method สำหรับแปลง Set<Hire> เป็น List<Integer>
     @Named("hiresToIds")
-    default List<Integer> mapHiresToIds(Set<com.itsci.mju.maebanjumpen.model.Hire> hires) {
+    default List<Integer> mapHiresToIds(Set<com.itsci.mju.maebanjumpen.entity.Hire> hires) {
         if (hires == null) {
             return java.util.Collections.emptyList();
         }
         // ใช้ getId แทน getHireId เพื่ออ้างอิง Primary Key ID ของ Hire
-        return hires.stream().map(com.itsci.mju.maebanjumpen.model.Hire::getHireId).collect(Collectors.toList());
+        return hires.stream().map(com.itsci.mju.maebanjumpen.entity.Hire::getHireId).collect(Collectors.toList());
     }
 }

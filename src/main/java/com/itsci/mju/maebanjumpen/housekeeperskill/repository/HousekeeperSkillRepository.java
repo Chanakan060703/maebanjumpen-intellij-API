@@ -1,0 +1,18 @@
+package com.itsci.mju.maebanjumpen.housekeeperskill.repository;
+
+import com.itsci.mju.maebanjumpen.entity.HousekeeperSkill;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface HousekeeperSkillRepository extends JpaRepository<HousekeeperSkill, Integer> {
+
+    Optional<HousekeeperSkill> findByHousekeeperIdAndSkillTypeSkillTypeId(Integer housekeeperId, Integer skillTypeId);
+
+    Optional<HousekeeperSkill> findByHousekeeperId(Integer housekeeperId);
+
+    // @Query("SELECT hks FROM HousekeeperSkill hks WHERE hks.housekeeper.id = :housekeeperId AND hks.skillType.skillTypeId = :skillTypeId")
+    // Optional<HousekeeperSkill> findByHousekeeperIdAndSkillTypeId(@Param("housekeeperId") Integer housekeeperId, @Param("skillTypeId") Integer skillTypeId);
+}

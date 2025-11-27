@@ -1,7 +1,7 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.*;
-import com.itsci.mju.maebanjumpen.model.*;
+import com.itsci.mju.maebanjumpen.entity.*;
+import com.itsci.mju.maebanjumpen.partyrole.dto.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.hibernate.Hibernate; // <-- IMPORT: นำเข้ายูทิลิตีของ Hibernate เพื่อแกะพร็อกซี

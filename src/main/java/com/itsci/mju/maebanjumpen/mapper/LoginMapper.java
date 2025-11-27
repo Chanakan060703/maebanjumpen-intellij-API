@@ -1,7 +1,7 @@
 package com.itsci.mju.maebanjumpen.mapper;
 
-import com.itsci.mju.maebanjumpen.dto.LoginDTO;
-import com.itsci.mju.maebanjumpen.model.Login;
+import com.itsci.mju.maebanjumpen.login.dto.LoginDTO;
+import com.itsci.mju.maebanjumpen.entity.Login;
 import org.mapstruct.Mapper;
 
 import java.util.List;
