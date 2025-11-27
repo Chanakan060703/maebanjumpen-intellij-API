@@ -1,0 +1,386 @@
+databaseChangeLog:
+  - changeSet:
+      id: load-skill_type-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/skill_type.csv
+            tableName: skill_type
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  header: skill_type_id
+                  name: skill_type_id
+                  type: numeric
+              - column:
+                  header: skill_type_name
+                  name: skill_type_name
+                  type: varchar
+              - column:
+                  header: skill_type_detail
+                  name: skill_type_detail
+                  type: varchar
+
+
+  - changeSet:
+      id: load-skill_level_tier-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/skill_level_tier.csv
+            tableName: skill_level_tier
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: id
+                  type: numeric
+              - column:
+                  name: skill_level_name
+                  type: varchar
+              - column:
+                  name: min_hires_for_level
+                  type: numeric
+
+
+  - changeSet:
+      id: load-login-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/login.csv
+            tableName: login
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: username
+                  type: string
+              - column:
+                  name: password
+                  type: string
+
+
+  - changeSet:
+      id: load-person-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/person.csv
+            tableName: person
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: person_id
+                  type: numeric
+              - column:
+                  name: email
+                  type: varchar
+              - column:
+                  name: first_name
+                  type: varchar
+              - column:
+                  name: last_name
+                  type: varchar
+              - column:
+                  name: id_card_number
+                  type: varchar
+              - column:
+                  name: phone_number
+                  type: numeric
+              - column:
+                  name: address
+                  type: varchar
+              - column:
+                  name: picture_url
+                  type: varchar
+              - column:
+                  name: account_status
+                  type: varchar
+              - column:
+                  name: username
+                  type: varchar
+
+  - changeSet:
+      id: load-party_role-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/party_role.csv
+            tableName: party_role
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: id
+                  type: numeric
+              - column:
+                  name: dtype
+                  type: varchar
+              - column:
+                  name: person_id
+                  type: numeric
+              - column:
+                  name: admin_status
+                  type: varchar
+              - column:
+                  name: balance
+                  type: numeric
+              - column:
+                  name: photo_verify_url
+                  type: varchar
+              - column:
+                  name: status_verify
+                  type: varchar
+              - column:
+                  name: rating
+                  type: numeric
+              - column:
+                  name: daily_rate
+                  type: varchar
+
+
+  - changeSet:
+      id: load-housekeeper_skill-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/housekeeper_skill.csv
+            tableName: housekeeper_skill
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: skill_id
+                  type: numeric
+              - column:
+                  name: housekeeper_id
+                  type: numeric
+              - column:
+                  name: skill_type_id
+                  type: numeric
+              - column:
+                  name: skill_level_tier_id
+                  type: numeric
+              - column:
+                  name: total_hires_completed
+                  type: numeric
+              - column:
+                  name: price_per_day
+                  type: numeric
+
+  - changeSet:
+      id: load-hire-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/hire.csv
+            tableName: hire
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: hire_id
+                  type: numeric
+              - column:
+                  name: hire_name
+                  type: varchar
+              - column:
+                  name: hire_detail
+                  type: varchar
+              - column:
+                  name: payment_amount
+                  type: numeric
+              - column:
+                  name: hire_date
+                  type: DATETIME
+              - column:
+                  name: start_date
+                  type: DATE
+              - column:
+                  name: start_time
+                  type: varchar
+              - column:
+                  name: end_time
+                  type: varchar
+              - column:
+                  name: location
+                  type: varchar
+              - column:
+                  name: job_status
+                  type: varchar
+              - column:
+                  name: hirer_id
+                  type: numeric
+              - column:
+                  name: housekeeper_id
+                  type: numeric
+              - column:
+                  name: skill_type_id
+                  type: numeric
+
+  - changeSet:
+      id: load-review-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/review.csv
+            tableName: review
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: review_id
+                  type: numeric
+              - column:
+                  name: review_message
+                  type: varchar
+              - column:
+                  name: score
+                  type: numeric
+              - column:
+                  name: review_date
+                  type: DATETIME
+              - column:
+                  name: hire_id
+                  type: numeric
+  - changeSet:
+      id: load-transaction-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/transactions.csv
+            tableName: transactions
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: transaction_id
+                  type: numeric
+              - column:
+                  name: transaction_type
+                  type: varchar
+              - column:
+                  name: transaction_amount
+                  type: numeric
+              - column:
+                  name: transaction_date
+                  type: DATETIME
+              - column:
+                  name: transaction_status
+                  type: varchar
+              - column:
+                  name: member_id
+                  type: numeric
+              - column:
+                  name: prompay_number
+                  type: numeric
+              - column:
+                  name: bank_account_number
+                  type: numeric
+              - column:
+                  name: bank_account_name
+                  type: varchar
+              - column:
+                  name: transaction_approval_date
+                  type: DATETIME
+
+  - changeSet:
+      id: load-penalty-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/penalty.csv
+            tableName: penalty
+            separator: ","
+            quotchar: '"'
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: penalty_id
+                  type: numeric
+              - column:
+                  name: penalty_type
+                  type: varchar
+              - column:
+                  name: penalty_detail
+                  type: varchar
+              - column:
+                  name: penalty_date
+                  type: DATETIME
+              - column:
+                  name: penalty_status
+                  type: varchar
+
+  - changeSet:
+      id: load-report-data
+      author: chanakan.beem
+      changes:
+        - loadData:
+            file: db/changelog/changes/data/report.csv
+            tableName: report
+            separator: ","
+            quotchar: "\""
+            encoding: UTF-8
+            columns:
+              - column:
+                  name: report_id
+                  type: numeric
+              - column:
+                  name: report_title
+                  type: varchar
+              - column:
+                  name: report_message
+                  type: varchar
+              - column:
+                  name: report_date
+                  type: DATETIME
+              - column:
+                  name: report_status
+                  type: varchar
+              - column:
+                  name: reporter_id
+                  type: numeric
+              - column:
+                  name: hire_id
+                  type: numeric
+              - column:
+                  name: penalty_id
+                  type: numeric
+
+  - changeSet:
+      id: reset-sequences
+      author: chanakan.beem
+      changes:
+        - sql:
+            sql: SELECT setval('skill_type_skill_type_id_seq', (SELECT COALESCE(MAX(skill_type_id), 0) + 1 FROM skill_type), false);
+        - sql:
+            sql: SELECT setval('skill_level_tier_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM skill_level_tier), false);
+        - sql:
+            sql: SELECT setval('person_person_id_seq', (SELECT COALESCE(MAX(person_id), 0) + 1 FROM person), false);
+        - sql:
+            sql: SELECT setval('party_role_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM party_role), false);
+        - sql:
+            sql: SELECT setval('housekeeper_skill_skill_id_seq', (SELECT COALESCE(MAX(skill_id), 0) + 1 FROM housekeeper_skill), false);
+        - sql:
+            sql: SELECT setval('hire_hire_id_seq', (SELECT COALESCE(MAX(hire_id), 0) + 1 FROM hire), false);
+        - sql:
+            sql: SELECT setval('review_review_id_seq', (SELECT COALESCE(MAX(review_id), 0) + 1 FROM review), false);
+        - sql:
+            sql: SELECT setval('transactions_transaction_id_seq', (SELECT COALESCE(MAX(transaction_id), 0) + 1 FROM transactions), false);
+        - sql:
+            sql: SELECT setval('penalty_penalty_id_seq', (SELECT COALESCE(MAX(penalty_id), 0) + 1 FROM penalty), false);
+        - sql:
+            sql: SELECT setval('report_report_id_seq', (SELECT COALESCE(MAX(report_id), 0) + 1 FROM report), false);
+

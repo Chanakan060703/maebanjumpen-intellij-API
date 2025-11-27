@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: maebanjumpen
+
+  # PostgreSQL Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/maebanjumpen
+    username: root
+    password: 12345678
+    driver-class-name: org.postgresql.Driver
+
+  # JPA/Hibernate Configuration
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    open-in-view: false
+
+  # Liquibase Configuration
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  # Jackson Configuration
+  jackson:
+    parser:
+      ALLOW_COMMENTS: true
+      ALLOW_SINGLE_QUOTES: true
+    stream-read-constraints:
+      max-nesting-depth: 2000
+    stream-write-constraints:
+      max-nesting-depth: 2000
+    time-zone: Asia/Bangkok
+
+  # Security Auto-configuration Exclusion
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+
+# Server Configuration
+server:
+  port: 8088
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+# Logging
+debug: true
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: debug
+        type:
+          descriptor:
+            sql:
+              BasicBinder: trace
+
+# File Upload
+file:
+  upload-dir: ./uploads
+
+app:
+  upload:
+    dir: ./uploads
+  public-base-url: https://unlaminated-unexcitablely-brianna.ngrok-free.dev
+
+# Omise API Configuration
+omise:
+  api:
+    public-key: pkey_test_64es6kkxd2loapyyxcn
+    secret-key: skey_test_64es6lcgkkz8v4wn6aq
+    base-url: https://api.omise.co
+  webhook:
+    url: https://unlaminated-unexcitablely-brianna.ngrok-free.dev/maeban/transactions/omise-webhook
+

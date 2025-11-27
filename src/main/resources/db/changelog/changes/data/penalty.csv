@@ -1,0 +1,2 @@
+penalty_id,penalty_type,penalty_detail,penalty_date,penalty_status
+1,WARNING,"มาสายเกิน 30 นาที",2024-02-01 10:00:00,ACTIVE

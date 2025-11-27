@@ -1,0 +1,2 @@
+report_id,report_title,report_message,report_date,report_status,reporter_id,hire_id,penalty_id
+1,"แจ้งปัญหาการมาสาย","แม่บ้านมาสายเกิน 30 นาที ทำให้ต้องรอนาน",2024-02-01 09:30:00,RESOLVED,5,4,1

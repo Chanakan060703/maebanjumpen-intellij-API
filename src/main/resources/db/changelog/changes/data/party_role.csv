@@ -1,0 +1,8 @@
+id,dtype,person_id,admin_status,balance,photo_verify_url,status_verify,rating,daily_rate
+1,admin,1,ACTIVE,,,,,
+2,housekeeper,2,,5000.00,,APPROVED,4.5,800
+3,housekeeper,3,,3000.00,,APPROVED,4.8,900
+4,housekeeper,4,,2000.00,,PENDING,0.0,750
+5,hirer,5,,10000.00,,,,
+6,hirer,6,,15000.00,,,,
+7,hirer,7,,8000.00,,,,

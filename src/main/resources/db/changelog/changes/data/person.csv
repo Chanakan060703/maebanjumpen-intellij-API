@@ -1,0 +1,8 @@
+person_id,email,first_name,last_name,id_card_number,phone_number,address,picture_url,account_status,username
+1,admin@maebanjumpen.com,Admin,System,1234567890123,0812345678,"123 Admin St., Bangkok",,ACTIVE,admin001
+2,somchai@email.com,สมชาย,ใจดี,1234567890124,0823456789,"456 Housekeeper Rd., Bangkok",,ACTIVE,housekeeper001
+3,malee@email.com,มาลี,สวยงาม,1234567890125,0834567890,"789 Housekeeper Ave., Bangkok",,ACTIVE,housekeeper002
+4,somsak@email.com,สมศักดิ์,ขยัน,1234567890126,0845678901,"321 Housekeeper Ln., Bangkok",,ACTIVE,housekeeper003
+5,nida@email.com,นิดา,รักบ้าน,1234567890127,0856789012,"654 Customer St., Bangkok",,ACTIVE,hirer001
+6,preecha@email.com,ปรีชา,มั่งมี,1234567890128,0867890123,"987 Customer Rd., Bangkok",,ACTIVE,hirer002
+7,suda@email.com,สุดา,สะอาด,1234567890129,0878901234,"147 Customer Ave., Bangkok",,ACTIVE,hirer003

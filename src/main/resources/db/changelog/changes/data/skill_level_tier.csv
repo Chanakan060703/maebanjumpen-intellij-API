@@ -1,0 +1,5 @@
+id,skill_level_name,min_hires_for_level
+1,Beginner,0
+2,Intermediate,5
+3,Advanced,15
+4,Expert,30

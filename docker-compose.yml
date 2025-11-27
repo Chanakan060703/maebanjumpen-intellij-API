@@ -1,22 +1,23 @@
 services:
   db:
-    image: mysql:8.0
+    image: postgres:16
     container_name: maebanjumpen-db
     ports:
-      - "3306:3306"
+      - "5432:5432"
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: 1234
-      MYSQL_DATABASE: maebanjumpen
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 12345678
+      POSTGRES_DB: maebanjumpen
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d maebanjumpen"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - maebanjumpen-network
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql/data
       - ./database/data.sql:/docker-entrypoint-initdb.d/data.sql
 
   app:
@@ -31,9 +32,9 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/maebanjumpen?characterEncoding=UTF-8&serverTimezone=Asia/Bangkok&useLegacyDatetimeCode=false
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/maebanjumpen
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_SQL_INIT_MODE: always
       SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: true
@@ -49,4 +50,4 @@ networks:
     driver: bridge
 
 volumes:
-  mysql-data:
+  postgres-data:

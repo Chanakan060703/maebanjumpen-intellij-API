@@ -1,0 +1,448 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-table-skill_type
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: skill_type
+            columns:
+              - column:
+                  name: skill_type_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: skill_type_name
+                  type: varchar(255)
+              - column:
+                  name: skill_type_detail
+                  type: varchar(255)
+  - changeSet:
+      id: create-table-skill_level_tier
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: skill_level_tier
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: skill_level_name
+                  type: varchar(255)
+              - column:
+                  name: min_hires_for_level
+                  type: int
+
+  - changeSet:
+      id: create-table-login
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: login
+            columns:
+              - column:
+                  name: username
+                  type: varchar(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: password
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: create-table-person
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: person
+            columns:
+              - column:
+                  name: person_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+              - column:
+                  name: first_name
+                  type: varchar(255)
+              - column:
+                  name: last_name
+                  type: varchar(255)
+              - column:
+                  name: id_card_number
+                  type: varchar(255)
+              - column:
+                  name: phone_number
+                  type: varchar(255)
+              - column:
+                  name: address
+                  type: varchar(255)
+              - column:
+                  name: picture_url
+                  type: varchar(255)
+              - column:
+                  name: account_status
+                  type: varchar(255)
+              - column:
+                  name: username
+                  type: varchar(255)
+                  constraints:
+                    unique: true
+                    nullable: false
+                    foreignKeyName: fk_person_login
+                    references: login(username)
+
+  - changeSet:
+      id: create-table-party_role
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: party_role
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: dtype
+                  type: varchar(255)
+              - column:
+                  name: person_id
+                  type: int
+                  constraints:
+                    unique: true
+                    nullable: false
+                    foreignKeyName: fk_party_role_person
+                    references: person(person_id)
+              - column:
+                  name: admin_status
+                  type: varchar(255)
+              - column:
+                  name: balance
+                  type: double
+              - column:
+                  name: photo_verify_url
+                  type: varchar(255)
+              - column:
+                  name: status_verify
+                  type: varchar(255)
+              - column:
+                  name: rating
+                  type: double
+              - column:
+                  name: daily_rate
+                  type: varchar(255)
+
+  - changeSet:
+      id: create-table-housekeeper_skill
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: housekeeper_skill
+            columns:
+              - column:
+                  name: skill_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: housekeeper_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_housekeeper_skill_housekeeper
+                    references: party_role(id)
+              - column:
+                  name: skill_type_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_housekeeper_skill_skill_type
+                    references: skill_type(skill_type_id)
+              - column:
+                  name: skill_level_tier_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_housekeeper_skill_skill_level_tier
+                    references: skill_level_tier(id)
+              - column:
+                  name: total_hires_completed
+                  type: int
+              - column:
+                  name: price_per_day
+                  type: double
+
+  - changeSet:
+      id: create-table-hire
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: hire
+            columns:
+              - column:
+                  name: hire_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: hire_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hire_detail
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payment_amount
+                  type: double
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hire_date
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: time
+              - column:
+                  name: location
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: job_status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hirer_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_hire_hirer
+                    references: party_role(id)
+              - column:
+                  name: housekeeper_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_hire_housekeeper
+                    references: party_role(id)
+              - column:
+                  name: skill_type_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_hire_skill_type
+                    references: skill_type(skill_type_id)
+
+  - changeSet:
+      id: create-table-review
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: review
+            columns:
+              - column:
+                  name: review_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: review_message
+                  type: varchar(255)
+              - column:
+                  name: score
+                  type: double
+              - column:
+                  name: review_date
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hire_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_review_hire
+                    references: hire(hire_id)
+
+  - changeSet:
+      id: create-table-transactions
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: transactions
+            columns:
+              - column:
+                  name: transaction_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transaction_type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_amount
+                  type: double
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_date
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: member_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_transactions_member
+                    references: party_role(id)
+              - column:
+                  name: prompay_number
+                  type: varchar(50)
+              - column:
+                  name: bank_account_number
+                  type: varchar(50)
+              - column:
+                  name: bank_account_name
+                  type: varchar(255)
+              - column:
+                  name: transaction_approval_date
+                  type: datetime
+
+  - changeSet:
+      id: create-table-penalty
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: penalty
+            columns:
+              - column:
+                  name: penalty_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: penalty_type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: penalty_detail
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: penalty_date
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: penalty_status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: create-table-report
+      author: chanakam.beem
+      changes:
+        - createTable:
+            tableName: report
+            columns:
+              - column:
+                  name: report_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: report_title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: report_message
+                  type: varchar(255)
+              - column:
+                  name: report_date
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: report_status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reporter_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_report_reporter
+                    references: party_role(id)
+              - column:
+                  name: hire_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_report_hire
+                    references: hire(hire_id)
+              - column:
+                  name: penalty_id
+                  type: int
+                  constraints:
+                    foreignKeyName: fk_report_penalty
+                    references: penalty(penalty_id)
+                    nullable: true
+  
